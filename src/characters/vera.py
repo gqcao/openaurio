@@ -1,6 +1,6 @@
 # /// script
 # dependencies = [
-#   "dashscope",
+#   "openai",
 #   "requests",
 # ]
 # ///
@@ -8,7 +8,8 @@
 """
 Vera — Your Swedish Neighbor & Language Buddy
 
-Fix: Add parent directory to path for imports when running script directly.
+Persona: Warm, patient, encouraging Swedish neighbor who helps immigrants
+learn Swedish through natural conversation and cultural insights.
 """
 
 import sys
@@ -16,11 +17,6 @@ import os
 # Add project root to path so 'src' module can be found
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-Persona: Warm, patient, encouraging Swedish neighbor who helps immigrants
-learn Swedish through natural conversation and cultural insights.
-"""
-
-import os
 import json
 from typing import Optional
 
@@ -52,7 +48,7 @@ Börja alltid med en vänlig hälsning!"""
 class Vera:
     """Vera character class for Swedish language learning conversations."""
     
-    def __init__(self, system_prompt: Optional[str] = None, model: str = "qwen-plus"):
+    def __init__(self, system_prompt: Optional[str] = None, model: str = "qwen3.5-flash"):
         """
         Initialize Vera character.
         
@@ -85,25 +81,26 @@ class Vera:
         Returns:
             dict with response text, and optionally audio data
         """
-        import dashscope
+        from openai import OpenAI
         
         # Add user message to history
         self.conversation_history.append({"role": "user", "content": user_message})
         
-        # Call LLM
-        dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
-        response = dashscope.MultiModalConversation.call(
-            model=self.model,
-            api_key=self.api_key,
-            messages=self.conversation_history,
-            stream=False,
-        )
-        
-        # Extract response
-        if response.status_code == 200:
-            assistant_message = response.output.choices[0].message.content
-        else:
-            assistant_message = f"Error: {response.code} - {response.message}"
+        try:
+            client = OpenAI(
+                api_key=self.api_key,
+                # 各地域的base_url不同
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            )
+
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=self.conversation_history,
+            )
+            assistant_message = response.choices[0].message.content
+        except Exception as e:
+            print(f"Error: {e}")
+            print("Please refer to https://help.aliyun.com/zh/model-studio/developer-reference/error-code")
         
         # Add assistant response to history
         self.conversation_history.append({"role": "assistant", "content": assistant_message})
@@ -150,6 +147,7 @@ def main():
     
     vera = Vera()
     counter = 0
+    os.makedirs(args.output_dir, exist_ok=True)
     
     while True:
         try:
