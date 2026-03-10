@@ -48,22 +48,36 @@ logger = logging.getLogger(__name__)
 # Store user sessions (chat_id → Vera instance)
 user_sessions: Dict[int, Vera] = {}
 
+# Track scenario completion (to award achievements)
+user_scenarios_in_progress: Dict[int, str] = {}
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command."""
     chat_id = update.effective_chat.id
+    user_name = update.effective_chat.first_name or "min vän"
     
-    # Create new Vera session for this user
-    user_sessions[chat_id] = Vera()
+    # Create new Vera session for this user with memory
+    user_sessions[chat_id] = Vera(user_id=str(chat_id))
+    
+    # Learn user's name
+    user_sessions[chat_id].learn_user_name(user_name)
     
     welcome_message = (
-        "🇸🇪 **Hej! Jag är Vera, din svenska språkkompis!**\n\n"
-        "Jag hjälper dig att lära dig svenska genom naturliga samtal.\n\n"
+        f"🇸🇪 **Hej {user_name}! Jag är Vera, din svenska språkkompis!** 💖\n\n"
+        "Jag är en 62-årig pensionerad lärarinna som bor i Göteborg.\n"
+        "Jag älskar att baka kanbullar, min katt Misse, och att hjälpa dig lära dig svenska! 🏡🐱\n\n"
+        "**Vad jag kan göra:**\n"
+        "• Prata svenska med dig (text eller röst)\n"
+        "• Lärande genom naturliga samtal\n"
+        "• 3 övningslägen (fika, matbutik, lägenhet)\n"
+        "• Jag kommer ihåg dig och din progress!\n\n"
         "**Kommandon:**\n"
         "/scenarios - Visa övningslägen\n"
-        "/fika - Starta fika-lektion\n"
-        "/grocery - Starta matvarulektion\n"
-        "/apartment - Starta lägenhetslektion\n"
+        "/fika - Starta fika-lektion ☕\n"
+        "/grocery - Starta matvarulektion 🛒\n"
+        "/apartment - Starta lägenhetslektion 🏠\n"
+        "/stats - Visa din progress 📊\n"
         "/reset - Återställ samtal\n"
         "/help - Visa hjälp\n\n"
         "Skicka text eller röstmessagen på svenska så svarar jag! 😊"
@@ -129,9 +143,12 @@ async def scenario_command(
     
     # Create or update Vera session with scenario
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera(scenario_id=scenario_id)
+        user_sessions[chat_id] = Vera(user_id=str(chat_id), scenario_id=scenario_id)
     else:
         user_sessions[chat_id].start_scenario(scenario_id)
+    
+    # Track that user is in this scenario
+    user_scenarios_in_progress[chat_id] = scenario_id
     
     intro_message = (
         f"📖 **{scenario.title_sv}**\n\n"
@@ -148,10 +165,53 @@ async def scenario_command(
     
     intro_message += (
         f"\n\n**Nu börjar vi!** Skriv eller prata på svenska så svarar jag. 😊\n"
-        f"_Skriv /reset för att avsluta lektionen._"
+        f"_När du är klar, skriv 'tack' eller 'klar' så avslutar vi lektionen._\n"
+        f"_Skriv /reset för att avsluta direkt._"
     )
     
     await update.message.reply_text(intro_message, parse_mode="Markdown")
+
+
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /stats command - show user progress."""
+    chat_id = update.effective_chat.id
+    
+    if chat_id not in user_sessions:
+        user_sessions[chat_id] = Vera(user_id=str(chat_id))
+    
+    vera = user_sessions[chat_id]
+    memory = vera.get_memory()
+    
+    if not memory:
+        await update.message.reply_text("❌ Ingen progress hittades än.")
+        return
+    
+    name = memory.get("name", "Okänd")
+    level = memory.get("level", "A1")
+    xp = memory.get("xp", 0)
+    streak = memory.get("streak", 0)
+    total_messages = memory.get("total_messages", 0)
+    completed = len(memory.get("completed_scenarios", []))
+    achievements = len(memory.get("achievements", []))
+    
+    # Level progress bar
+    next_level_xp = 100 if level == "A1" else 300 if level == "A2" else 600 if level == "B1" else 1000
+    prev_level_xp = 0 if level == "A1" else 100 if level == "A2" else 300 if level == "B1" else 600
+    progress = ((xp - prev_level_xp) / (next_level_xp - prev_level_xp)) * 100
+    progress_bar = "█" * int(progress / 10) + "░" * (10 - int(progress / 10))
+    
+    stats_message = (
+        f"📊 **Din Progress, {name}!**\n\n"
+        f"**Nivå:** {level}\n"
+        f"[{progress_bar}] {xp} XP\n\n"
+        f"**🔥 Streak:** {streak} dagar\n"
+        f"**💬 Totalt meddelanden:** {total_messages}\n"
+        f"**✅ Avslutade lektioner:** {completed}/3\n"
+        f"**🏆 Achievements:** {achievements} låsta\n\n"
+        f"_Fortsätt så här så blir du flytande i svenska!_ 💪🇸🇪"
+    )
+    
+    await update.message.reply_text(stats_message, parse_mode="Markdown")
 
 
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -164,7 +224,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🔄 Samtalet har återställts! Hej igen! 😊"
         )
     else:
-        user_sessions[chat_id] = Vera()
+        user_sessions[chat_id] = Vera(user_id=str(chat_id))
         await update.message.reply_text("🇸🇪 Hej! Jag är Vera. Vad kan jag hjälpa dig med?")
 
 
@@ -185,20 +245,49 @@ async def handle_text_message(
     
     # Get or create Vera session
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera()
+        user_sessions[chat_id] = Vera(user_id=str(chat_id))
     
     vera = user_sessions[chat_id]
+    
+    # Check if user is completing a scenario
+    if vera.scenario_mode and user_text.lower() in ["tack", "klar", "tack för mig", "det var allt"]:
+        scenario_id = user_scenarios_in_progress.get(chat_id)
+        if scenario_id:
+            vera.exit_scenario()  # This marks scenario as completed
+            del user_scenarios_in_progress[chat_id]
+            
+            scenario = get_scenario(scenario_id)
+            await update.message.reply_text(
+                f"🎉 **BRA JOB BAT!**\n\n"
+                f"Du har avslutat **{scenario.title_sv}**!\n"
+                f"+50 XP för att du slutförde lektionen!\n\n"
+                f"Vill du fortsätta prata eller prova en annan lektion?\n"
+                f"Använd /scenarios för att se alla lägen.",
+                parse_mode="Markdown",
+            )
+            return
     
     # Send typing indicator
     await update.message.chat.send_action(action="typing")
     
     try:
         # Get Vera's response
-        response = vera.chat(user_text)
+        response = vera.chat(user_text, is_voice=False)
         vera_text = response["text"]
         
         # Send text response
         await update.message.reply_text(vera_text)
+        
+        # Show achievements if unlocked
+        if response.get("achievements"):
+            achievement_text = "🏆 **NYA ACHIEVEMENTS!**\n\n"
+            for achievement in response["achievements"]:
+                achievement_text += (
+                    f"🎯 **{achievement['name_sv']}**\n"
+                    f"_{achievement['description_sv']}_\n"
+                    f"+{achievement['xp_reward']} XP!\n\n"
+                )
+            await update.message.reply_text(achievement_text, parse_mode="Markdown")
         
         # Generate and send voice response
         await send_voice_response(update, vera_text)
@@ -219,7 +308,7 @@ async def handle_voice_message(
     
     # Get or create Vera session
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera()
+        user_sessions[chat_id] = Vera(user_id=str(chat_id))
     
     vera = user_sessions[chat_id]
     
@@ -248,8 +337,8 @@ async def handle_voice_message(
         
         logger.info(f"Transcribed: {user_text}")
         
-        # Get Vera's response
-        response = vera.chat(user_text)
+        # Get Vera's response (mark as voice message for XP bonus)
+        response = vera.chat(user_text, is_voice=True)
         vera_text = response["text"]
         
         # Send transcription (for user to verify)
@@ -258,6 +347,17 @@ async def handle_voice_message(
             f"**Jag svarar:**\n{vera_text}",
             parse_mode="Markdown",
         )
+        
+        # Show achievements if unlocked
+        if response.get("achievements"):
+            achievement_text = "🏆 **NYA ACHIEVEMENTS!**\n\n"
+            for achievement in response["achievements"]:
+                achievement_text += (
+                    f"🎯 **{achievement['name_sv']}**\n"
+                    f"_{achievement['description_sv']}_\n"
+                    f"+{achievement['xp_reward']} XP!\n\n"
+                )
+            await update.message.reply_text(achievement_text, parse_mode="Markdown")
         
         # Generate and send voice response
         await send_voice_response(update, vera_text)
@@ -351,6 +451,7 @@ def main():
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("scenarios", scenarios_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("reset", reset_command))
     
     # Scenario commands
