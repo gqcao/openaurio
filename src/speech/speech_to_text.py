@@ -10,7 +10,7 @@ from io import BytesIO
 from elevenlabs.client import ElevenLabs
 
 
-def speech_to_text(audio_file_path, language=None, model_id="scribe_v2", diarize=True, tag_events=True):
+def speech_to_text(audio_file_path, language="swe", model_id="scribe_v2", diarize=True, tag_events=True):
     """Transcribe audio file to text using ElevenLabs Scribe v2.
     
     Args:

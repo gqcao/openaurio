@@ -30,6 +30,8 @@ from telegram.ext import (
     filters,
     ContextTypes,
 )
+# Add project root to path so 'src' module can be found
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.characters.vera import Vera
 from src.tts.tts import text_to_speech
