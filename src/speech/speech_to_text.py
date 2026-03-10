@@ -1,38 +1,81 @@
 # /// script
 # dependencies = [
-#   "dashscope",
+#   "elevenlabs",
 # ]
 # ///
 
 import os
 import sys
-import dashscope
+from io import BytesIO
+from elevenlabs.client import ElevenLabs
 
-dashscope.base_http_api_url = 'https://dashscope.aliyuncs.com/api/v1'
 
-def speech_to_text(audio_file_path):
-    messages = [
-        {"role": "user", "content": [{"audio": audio_file_path}]}
-    ]
-    api_key = os.getenv("QWEN_API_KEY")
-
+def speech_to_text(audio_file_path, language=None, model_id="scribe_v2", diarize=True, tag_events=True):
+    """Transcribe audio file to text using ElevenLabs Scribe v2.
+    
+    Args:
+        audio_file_path: Path to the audio file to transcribe
+        language: Language code (default: None for auto-detection). e.g., "eng", "swe"
+        model_id: Model ID (default: scribe_v2)
+        diarize: Enable speaker diarization (default: True)
+        tag_events: Tag audio events like laughter, applause (default: True)
+    
+    Returns:
+        dict with transcription text and metadata
+    """
+    api_key = os.getenv("ELEVEN_API_KEY")
     if not api_key:
-        return "Error: QWEN_API_KEY environment variable is not set."
+        raise ValueError("ELEVEN_API_KEY environment variable is not set. Set it with: export ELEVEN_API_KEY=your_key_here")
 
-    response = dashscope.MultiModalConversation.call(
-        api_key=api_key,
-        model="qwen3-asr-flash",
-        messages=messages,
-        result_format="message",
-        asr_options={
-            "enable_itn": False
-        }
+    if not os.path.isfile(audio_file_path):
+        raise FileNotFoundError(f"Audio file not found: {audio_file_path}")
+
+    client = ElevenLabs(api_key=api_key)
+
+    with open(audio_file_path, "rb") as audio_file:
+        audio_data = BytesIO(audio_file.read())
+
+    transcription = client.speech_to_text.convert(
+        file=audio_data,
+        model_id=model_id,
+        tag_audio_events=tag_events,
+        language_code=language,
+        diarize=diarize,
     )
-    return response["output"]["choices"][0]["message"]["content"][0]["text"]
+
+    return {
+        "text": transcription.text,
+        "language": transcription.language_code if hasattr(transcription, 'language_code') else language,
+        "diarization": diarize,
+    }
+
+
+def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="Transcribe audio files using ElevenLabs Scribe v2."
+    )
+    parser.add_argument("--file", required=True, help="Path to the audio file to transcribe")
+    parser.add_argument("--language", default=None, help="Language code (default: None for auto-detect). e.g., eng, swe")
+    parser.add_argument("--model", default="scribe_v2", help="Model ID (default: scribe_v2)")
+    parser.add_argument("--diarize", action=argparse.BooleanOptionalAction, default=True, help="Annotate who is speaking")
+    parser.add_argument("--tag-events", action=argparse.BooleanOptionalAction, default=True, help="Tag audio events like laughter, applause")
+    args = parser.parse_args()
+
+    try:
+        result = speech_to_text(
+            audio_file_path=args.file,
+            language=args.language,
+            model_id=args.model,
+            diarize=args.diarize,
+            tag_events=args.tag_events,
+        )
+        print(result["text"])
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python speech_to_text.py <audio_file_absolute_path>")
-        sys.exit(1)
-    result = speech_to_text(sys.argv[1])
-    print(result)
+    main()

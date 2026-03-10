@@ -1,71 +1,79 @@
 # /// script
 # dependencies = [
-#   "dashscope",
-#   "requests",
+#   "elevenlabs>=1.0",
 # ]
-# requires-python = ">=3.9"
 # ///
 
 import argparse
-import json
 import os
 import sys
 
-import dashscope
-import requests
 
+def text_to_speech(text_input, voice_id="JBFqnCBsd6RMkjVDRZzb", model_id="eleven_multilingual_v2", output_file=None):
+    """Convert text to speech using ElevenLabs API.
+    
+    Args:
+        text_input: The text to convert to speech
+        voice_id: ElevenLabs voice ID (default: JBFqnCBsd6RMkjVDRZzb - Rachel)
+        model_id: ElevenLabs model ID (default: eleven_multilingual_v2)
+        output_file: Optional output file path. If None, returns audio bytes.
+    
+    Returns:
+        If output_file is provided: dict with status and output path
+        If output_file is None: bytes of the audio data
+    """
+    api_key = os.getenv("ELEVEN_API_KEY")
+    if not api_key:
+        raise ValueError("ELEVEN_API_KEY environment variable is not set. Set it with: export ELEVEN_API_KEY=your_key_here")
 
-def text_to_speech(text_input, voice="Cherry", language="English", model="qwen3-tts-flash"):
-    """Call the Qwen TTS API and return the audio URL."""
-    dashscope.base_http_api_url = "https://dashscope.aliyuncs.com/api/v1"
-    response = dashscope.MultiModalConversation.call(
-        model=model,
-        api_key=os.getenv("QWEN_API_KEY"),
+    from elevenlabs.client import ElevenLabs
+
+    client = ElevenLabs(api_key=api_key)
+
+    audio = client.text_to_speech.convert(
         text=text_input,
-        voice=voice,
-        language_type=language,
-        stream=False,
+        voice_id=voice_id,
+        model_id=model_id,
+        output_format="mp3_44100_128",
     )
-    try:
-        return response["output"]["audio"]["url"]
-    except (KeyError, TypeError):
-        print(f"Error: unexpected API response: {json.dumps(response, indent=2, default=str)}", file=sys.stderr)
-        sys.exit(1)
 
-def download_file(url, destination):
-    """Download a file from a URL to a local path."""
-    response = requests.get(url)
-    if response.status_code == 200:
-        with open(destination, "wb") as f:
-            f.write(response.content)
-        print(json.dumps({"status": "success", "file": destination, "size_bytes": len(response.content)}))
+    if output_file:
+        with open(output_file, "wb") as f:
+            for chunk in audio:
+                if chunk:
+                    f.write(chunk)
+        return {"status": "success", "output": output_file}
     else:
-        print(f"Error: failed to download audio. HTTP status: {response.status_code}", file=sys.stderr)
-        sys.exit(1)
+        audio_bytes = b""
+        for chunk in audio:
+            if chunk:
+                audio_bytes += chunk
+        return audio_bytes
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Convert text to speech using the Qwen3 TTS API.",
+        description="Convert text to speech using the ElevenLabs API."
     )
     parser.add_argument("--text", required=True, help="The text to convert to speech.")
-    parser.add_argument("--output", required=True, help="Destination file path for the audio (e.g. output.mp3).")
-    parser.add_argument("--voice", default="Cherry", help="Voice name (default: Cherry).")
-    parser.add_argument("--language", default="English", help="Language of the text (default: English).")
+    parser.add_argument("--output", required=True, help="Output MP3 file path.")
     parser.add_argument(
-        "--model",
-        default="qwen3-tts-flash",
-        help="Model name (default: qwen3-tts-flash). Use qwen3-tts-instruct-flash for instruction control.",
+        "--voice-id", default="JBFqnCBsd6RMkjVDRZzb", help="ElevenLabs voice ID."
+    )
+    parser.add_argument(
+        "--model-id", default="eleven_multilingual_v2", help="ElevenLabs model ID."
     )
     args = parser.parse_args()
 
-    api_key = os.getenv("QWEN_API_KEY")
-    if not api_key:
-        print("Error: QWEN_API_KEY environment variable is not set.", file=sys.stderr)
-        print("Get an API key at: https://help.aliyun.com/zh/model-studio/get-api-key", file=sys.stderr)
-        sys.exit(1)
+    result = text_to_speech(
+        text_input=args.text,
+        voice_id=args.voice_id,
+        model_id=args.model_id,
+        output_file=args.output
+    )
+    
+    print(f'{{"status": "{result["status"]}", "output": "{result["output"]}"}}')
 
-    audio_url = text_to_speech(args.text, voice=args.voice, language=args.language, model=args.model)
-    download_file(audio_url, args.output)
 
 if __name__ == "__main__":
     main()
