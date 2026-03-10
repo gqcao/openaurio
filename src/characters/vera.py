@@ -20,6 +20,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import json
 from typing import Optional
 
+# Import scenarios
+from src.scenarios.lessons import get_scenario_prompt, list_scenarios, get_scenario
+
 # Default system prompt for Vera
 VERA_SYSTEM_PROMPT = """Du är Vera, en varm och tålmodig svensk granne som hjälper nybörjare lära sig svenska.
 
@@ -48,15 +51,36 @@ Börja alltid med en vänlig hälsning!"""
 class Vera:
     """Vera character class for Swedish language learning conversations."""
     
-    def __init__(self, system_prompt: Optional[str] = None, model: str = "qwen3.5-flash"):
+    def __init__(
+        self,
+        system_prompt: Optional[str] = None,
+        model: str = "qwen3.5-flash",
+        scenario_id: Optional[str] = None,
+    ):
         """
         Initialize Vera character.
         
         Args:
             system_prompt: Custom system prompt (uses default if None)
-            model: LLM model to use (default: qwen-plus)
+            model: LLM model to use (default: qwen3.5-flash)
+            scenario_id: Optional scenario ID for lesson mode (fika, grocery, apartment)
         """
-        self.system_prompt = system_prompt or VERA_SYSTEM_PROMPT
+        # Use scenario prompt if provided, otherwise use default Vera prompt
+        if scenario_id:
+            scenario_prompt = get_scenario_prompt(scenario_id)
+            if scenario_prompt:
+                self.system_prompt = scenario_prompt
+                self.scenario_mode = True
+                self.scenario_id = scenario_id
+            else:
+                self.system_prompt = system_prompt or VERA_SYSTEM_PROMPT
+                self.scenario_mode = False
+                self.scenario_id = None
+        else:
+            self.system_prompt = system_prompt or VERA_SYSTEM_PROMPT
+            self.scenario_mode = False
+            self.scenario_id = None
+        
         self.model = model
         self.conversation_history = [
             {"role": "system", "content": self.system_prompt}
@@ -131,6 +155,37 @@ class Vera:
     def get_history(self):
         """Get conversation history."""
         return self.conversation_history.copy()
+    
+    def start_scenario(self, scenario_id: str) -> bool:
+        """
+        Start a scenario lesson.
+        
+        Args:
+            scenario_id: ID of the scenario (fika, grocery, apartment)
+        
+        Returns:
+            True if scenario started successfully, False otherwise
+        """
+        scenario_prompt = get_scenario_prompt(scenario_id)
+        if not scenario_prompt:
+            return False
+        
+        self.scenario_id = scenario_id
+        self.scenario_mode = True
+        self.system_prompt = scenario_prompt
+        self.conversation_history = [
+            {"role": "system", "content": self.system_prompt}
+        ]
+        return True
+    
+    def exit_scenario(self):
+        """Exit scenario mode and return to regular Vera chat."""
+        self.scenario_mode = False
+        self.scenario_id = None
+        self.system_prompt = VERA_SYSTEM_PROMPT
+        self.conversation_history = [
+            {"role": "system", "content": self.system_prompt}
+        ]
 
 
 def main():
@@ -140,12 +195,38 @@ def main():
     parser = argparse.ArgumentParser(description="Chat with Vera - your Swedish language buddy")
     parser.add_argument("--voice", action="store_true", help="Enable voice output (TTS)")
     parser.add_argument("--output-dir", default=".", help="Directory for audio output")
+    parser.add_argument("--scenario", choices=["fika", "grocery", "apartment"], help="Start with a specific scenario lesson")
+    parser.add_argument("--list-scenarios", action="store_true", help="List available scenarios")
     args = parser.parse_args()
     
-    print("🇸🇪 Hej! Jag är Vera, din svenska språkkompis.")
-    print("Skriv 'quit' för att avsluta, 'reset' för att börja om.\n")
+    # List scenarios if requested
+    if args.list_scenarios:
+        print("\n📚 Available Scenario Lessons\n")
+        print("=" * 60)
+        for scenario in list_scenarios():
+            print(f"\n☕ {scenario['title_sv']} ({scenario['title']})")
+            print(f"   Level: {scenario['level']}")
+            print(f"   {scenario['description']}")
+        print("\n" + "=" * 60)
+        print("\nUse --scenario <id> to start a lesson")
+        print("Example: uv run src/characters/vera.py --scenario fika --voice\n")
+        return
     
-    vera = Vera()
+    print("🇸🇪 Hej! Jag är Vera, din svenska språkkompis.")
+    
+    # Initialize Vera with optional scenario
+    if args.scenario:
+        vera = Vera(scenario_id=args.scenario)
+        scenario = get_scenario(args.scenario)
+        if scenario:
+            print(f"📖 Starting lesson: {scenario.title_sv}")
+            print(f"   {scenario.description}")
+            print(f"\n💡 Tips: Say 'exit' to leave scenario mode, 'scenarios' to see all lessons\n")
+    else:
+        vera = Vera()
+        print("Skriv 'quit' för att avsluta, 'reset' för att börja om.")
+        print("Skriv 'scenarios' för att se övningslägen.\n")
+    
     counter = 0
     os.makedirs(args.output_dir, exist_ok=True)
     
@@ -157,12 +238,38 @@ def main():
             break
         
         if user_input.lower() in ["quit", "exit", "q"]:
-            print("Vera: Hejdå! Ha det så bra! 👋")
+            if vera.scenario_mode:
+                print("Vera: Hejdå! Bra jobbat idag! 👋")
+            else:
+                print("Vera: Hejdå! Ha det så bra! 👋")
             break
         
         if user_input.lower() == "reset":
             vera.reset()
             print("Vera: Conversation reset! Hej igen! 😊\n")
+            continue
+        
+        if user_input.lower() == "scenarios":
+            print("\n📚 Available Scenario Lessons:")
+            for scenario in list_scenarios():
+                print(f"   • {scenario['id']}: {scenario['title_sv']}")
+            print("\nType 'scenario <id>' to start (e.g., 'scenario fika')\n")
+            continue
+        
+        # Handle scenario switching
+        if user_input.lower().startswith("scenario "):
+            scenario_id = user_input.split()[1]
+            if vera.start_scenario(scenario_id):
+                scenario = get_scenario(scenario_id)
+                print(f"\n📖 Starting lesson: {scenario.title_sv}")
+                print(f"   Say 'exit scenario' to return to free chat\n")
+            else:
+                print(f"Scenario '{scenario_id}' not found. Type 'scenarios' to see all.\n")
+            continue
+        
+        if user_input.lower() == "exit scenario":
+            vera.exit_scenario()
+            print("Vera: Exiting scenario mode. Back to free chat! 😊\n")
             continue
         
         if not user_input:
