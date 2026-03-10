@@ -8,6 +8,14 @@
 """
 Vera — Your Swedish Neighbor & Language Buddy
 
+Fix: Add parent directory to path for imports when running script directly.
+"""
+
+import sys
+import os
+# Add project root to path so 'src' module can be found
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
 Persona: Warm, patient, encouraging Swedish neighbor who helps immigrants
 learn Swedish through natural conversation and cultural insights.
 """
