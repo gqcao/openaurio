@@ -20,7 +20,7 @@ openaurio is an AI-powered language learning app focused on **personality-driven
 | Component | Technology |
 |-----------|------------|
 | Backend | Python (FastAPI) |
-| AI/TTS | Qwen via DashScope |
+| AI/TTS | Qwen 3.5 Flash |
 | Speech-to-Text | Qwen ASR |
 | Web Search | DuckDuckGo / LangSearch |
 
@@ -31,7 +31,7 @@ openaurio is an AI-powered language learning app focused on **personality-driven
 pip install -r requirements.txt
 
 # Set up environment
-export DASHSCOPE_API_KEY="your-key"
+export QWEN_API_KEY="your-key"
 
 # Run TTS example
 python src/tts/tts.py --text "Hej! Jag är Vera." --output hello.mp3

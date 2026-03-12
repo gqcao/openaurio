@@ -484,11 +484,11 @@ class Vera:
         ]
         
         # Get API key
-        self.api_key = os.getenv("DASHSCOPE_API_KEY") or os.getenv("QWEN_API_KEY")
+        self.api_key = os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "DASHSCOPE_API_KEY or QWEN_API_KEY environment variable is not set. "
-                "Set it with: export DASHSCOPE_API_KEY=your_key_here"
+                "QWEN_API_KEY environment variable is not set. "
+                "Set it with: export QWEN_API_KEY=your_key_here"
             )
         
         # Track voice messages for achievements

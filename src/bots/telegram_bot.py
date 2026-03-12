@@ -3,6 +3,7 @@
 #   "openai",
 #   "requests",
 #   "python-telegram-bot",
+#   "python-dotenv",
 # ]
 # ///
 
@@ -18,6 +19,10 @@ import os
 import tempfile
 import logging
 from typing import Dict, Optional
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
