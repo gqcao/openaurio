@@ -404,6 +404,13 @@ class Buddy:
         if scenario_id:
             self.start_scenario(scenario_id)
 
+        self.api_key = os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
+        if not self.api_key:
+            raise ValueError(
+                "QWEN_API_KEY environment variable is not set. "
+                "Set it with: export QWEN_API_KEY=your_key_here"
+            )
+
     @property
     def name(self) -> str:
         """Character name."""
@@ -531,19 +538,19 @@ class Buddy:
             messages.append({"role": "system", "content": f"SCENARIO:\n{scenario_prompt}"})
         
         messages.append({"role": "user", "content": user_message})
-        
+
         # Call LLM
         try:
             from openai import OpenAI
             client = OpenAI(
-                api_key=os.getenv("DASHSCOPE_API_KEY"),
+                api_key=self.api_key,
                 base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
             )
             
             response = client.chat.completions.create(
-                model="qwen-plus",
+                model="qwen3.5-flash",
                 messages=messages,
-                temperature=0.7,
+                temperature=0.8,
                 max_tokens=500,
             )
             
