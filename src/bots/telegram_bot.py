@@ -38,7 +38,7 @@ from telegram.ext import (
 # Add project root to path so 'src' module can be found
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.characters.vera import Vera
+from src.characters import Buddy
 from src.tts.tts import text_to_speech
 from src.speech.speech_to_text import speech_to_text
 from src.scenarios.lessons import list_scenarios, get_scenario
@@ -50,8 +50,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Store user sessions (chat_id → Vera instance)
-user_sessions: Dict[int, Vera] = {}
+# Store user sessions (chat_id → Buddy instance)
+user_sessions: Dict[int, Buddy] = {}
 
 # Track scenario completion (to award achievements)
 user_scenarios_in_progress: Dict[int, str] = {}
@@ -62,8 +62,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_name = update.effective_chat.first_name or "min vän"
     
-    # Create new Vera session for this user with memory
-    user_sessions[chat_id] = Vera(user_id=str(chat_id))
+    # Create new Buddy session for this user with memory
+    user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
     
     # Learn user's name
     user_sessions[chat_id].learn_user_name(user_name)
@@ -146,9 +146,9 @@ async def scenario_command(
         )
         return
     
-    # Create or update Vera session with scenario
+    # Create or update Buddy session with scenario
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera(user_id=str(chat_id), scenario_id=scenario_id)
+        user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id), scenario_id=scenario_id)
     else:
         user_sessions[chat_id].start_scenario(scenario_id)
     
@@ -182,10 +182,10 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera(user_id=str(chat_id))
+        user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
     
-    vera = user_sessions[chat_id]
-    memory = vera.get_memory()
+    buddy = user_sessions[chat_id]
+    memory = buddy.get_memory()
     
     if not memory:
         await update.message.reply_text("❌ Ingen progress hittades än.")
@@ -229,7 +229,7 @@ async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🔄 Samtalet har återställts! Hej igen! 😊"
         )
     else:
-        user_sessions[chat_id] = Vera(user_id=str(chat_id))
+        user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
         await update.message.reply_text("🇸🇪 Hej! Jag är Vera. Vad kan jag hjälpa dig med?")
 
 
@@ -248,22 +248,22 @@ async def handle_text_message(
     if user_text.startswith("/"):
         return
     
-    # Get or create Vera session
+    # Get or create Buddy session
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera(user_id=str(chat_id))
+        user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
     
-    vera = user_sessions[chat_id]
+    buddy = user_sessions[chat_id]
     
     # Check if user is completing a scenario
-    if vera.scenario_mode and user_text.lower() in ["tack", "klar", "tack för mig", "det var allt"]:
+    if buddy.scenario_mode and user_text.lower() in ["tack", "klar", "tack för mig", "det var allt"]:
         scenario_id = user_scenarios_in_progress.get(chat_id)
         if scenario_id:
-            vera.exit_scenario()  # This marks scenario as completed
+            buddy.exit_scenario()  # This marks scenario as completed
             del user_scenarios_in_progress[chat_id]
             
             scenario = get_scenario(scenario_id)
             await update.message.reply_text(
-                f"🎉 **BRA JOB BAT!**\n\n"
+                f"🎉 **BRA JOBBAT!**\n\n"
                 f"Du har avslutat **{scenario.title_sv}**!\n"
                 f"+50 XP för att du slutförde lektionen!\n\n"
                 f"Vill du fortsätta prata eller prova en annan lektion?\n"
@@ -276,12 +276,12 @@ async def handle_text_message(
     await update.message.chat.send_action(action="typing")
     
     try:
-        # Get Vera's response
-        response = vera.chat(user_text, is_voice=False)
-        vera_text = response["text"]
+        # Get Buddy's response
+        response = buddy.chat(user_text, is_voice=False)
+        buddy_text = response["text"]
         
         # Send text response
-        await update.message.reply_text(vera_text)
+        await update.message.reply_text(buddy_text)
         
         # Show achievements if unlocked
         if response.get("achievements"):
@@ -295,7 +295,7 @@ async def handle_text_message(
             await update.message.reply_text(achievement_text, parse_mode="Markdown")
         
         # Generate and send voice response
-        await send_voice_response(update, vera_text)
+        await send_voice_response(update, buddy_text)
         
     except Exception as e:
         logger.error(f"Error processing text message: {e}")
@@ -311,11 +311,11 @@ async def handle_voice_message(
     """Handle voice messages (audio)."""
     chat_id = update.effective_chat.id
     
-    # Get or create Vera session
+    # Get or create Buddy session
     if chat_id not in user_sessions:
-        user_sessions[chat_id] = Vera(user_id=str(chat_id))
+        user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
     
-    vera = user_sessions[chat_id]
+    buddy = user_sessions[chat_id]
     
     # Download voice message
     voice_file = await update.message.voice.get_file()
@@ -342,14 +342,14 @@ async def handle_voice_message(
         
         logger.info(f"Transcribed: {user_text}")
         
-        # Get Vera's response (mark as voice message for XP bonus)
-        response = vera.chat(user_text, is_voice=True)
-        vera_text = response["text"]
+        # Get Buddy's response (mark as voice message for XP bonus)
+        response = buddy.chat(user_text, is_voice=True)
+        buddy_text = response["text"]
         
         # Send transcription (for user to verify)
         await update.message.reply_text(
             f"🎤 **Du sa:**\n_{user_text}_\n\n"
-            f"**Jag svarar:**\n{vera_text}",
+            f"**Jag svarar:**\n{buddy_text}",
             parse_mode="Markdown",
         )
         
@@ -365,7 +365,7 @@ async def handle_voice_message(
             await update.message.reply_text(achievement_text, parse_mode="Markdown")
         
         # Generate and send voice response
-        await send_voice_response(update, vera_text)
+        await send_voice_response(update, buddy_text)
         
     except Exception as e:
         logger.error(f"Error processing voice message: {e}")
