@@ -16,7 +16,7 @@ openaurio is an AI-powered language learning app focused on **personality-driven
 - 📈 **SFI-aligned progress** — track toward official levels
 
 ## Demo
-![demo_swe](docs/demo_swe.gif)
+<img src="docs/demo_swe.gif" alt="demo_swe" width="150" height="333">
 
 ## Tech Stack
 
