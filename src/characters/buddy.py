@@ -404,11 +404,11 @@ class Buddy:
         if scenario_id:
             self.start_scenario(scenario_id)
 
-        self.api_key = os.getenv("QWEN_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
+        self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             raise ValueError(
-                "QWEN_API_KEY environment variable is not set. "
-                "Set it with: export QWEN_API_KEY=your_key_here"
+                "GEMINI_API_KEY environment variable is not set. "
+                "Get your key at: https://aistudio.google.com/apikeys"
             )
 
     @property
@@ -539,22 +539,31 @@ class Buddy:
         
         messages.append({"role": "user", "content": user_message})
 
-        # Call LLM
+        # Call LLM using Google Gemini
         try:
-            from openai import OpenAI
-            client = OpenAI(
-                api_key=self.api_key,
-                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            from google import genai
+            from google.genai import types
+            
+            client = genai.Client(api_key=self.api_key)
+            
+            # Build the full prompt for Gemini
+            full_prompt = self.get_system_prompt()
+            
+            if scenario_prompt:
+                full_prompt += f"\n\nSCENARIO:\n{scenario_prompt}"
+            
+            full_prompt += f"\n\nUser message: {user_message}"
+            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.8,
+                    max_output_tokens=500,
+                )
             )
             
-            response = client.chat.completions.create(
-                model="qwen3.5-flash",
-                messages=messages,
-                temperature=0.8,
-                max_tokens=500,
-            )
-            
-            reply = response.choices[0].message.content
+            reply = response.text
             
         except Exception as e:
             reply = f"Åh nej, något gick fel! Försök igen. (Error: {str(e)[:50]})"

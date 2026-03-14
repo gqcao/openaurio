@@ -65,7 +65,7 @@
       "Those interested in Swedish culture",
       "Older learners preferring peer relationship"
     ],
-    "voice_id": "JBFqnCBsd6RMkjVDRZzb",
+    "voice_id": "Leda",
     "avatar_emoji": "👵",
     "system_prompt_template": "vera"
   },
@@ -134,7 +134,7 @@
       "Those wanting informal Swedish",
       "Tech/gaming enthusiasts"
     ],
-    "voice_id": "ErXwobaYiN019PkySvjV",
+    "voice_id": "Kore",
     "avatar_emoji": "🎮",
     "system_prompt_template": "lars"
   },
@@ -204,7 +204,7 @@
       "Structured learners",
       "Exam preparation"
     ],
-    "voice_id": "EXAVITQu4vr4xnSDxMaL",
+    "voice_id": "Aoede",
     "avatar_emoji": "📚",
     "system_prompt_template": "emma"
   },

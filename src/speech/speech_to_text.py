@@ -1,66 +1,185 @@
 # /// script
 # dependencies = [
-#   "elevenlabs",
+#   "google-genai",
 # ]
 # ///
 
+"""
+Speech-to-Text using Google Gemini 2.5 Flash Native Audio
+
+Gemini 2.5 Flash supports native audio input, allowing direct transcription
+without needing a separate ASR service.
+"""
+
 import os
 import sys
-from io import BytesIO
-from elevenlabs.client import ElevenLabs
+import wave
+import tempfile
+from pathlib import Path
+from google import genai
+from google.genai import types
 
 
-def speech_to_text(audio_file_path, language="swe", model_id="scribe_v2", diarize=True, tag_events=True):
-    """Transcribe audio file to text using ElevenLabs Scribe v2.
+def convert_to_wav(audio_file_path: str) -> str:
+    """Convert audio file to WAV format if needed.
+    
+    Gemini expects audio in specific formats. This converts to WAV
+    using ffmpeg if available.
+    """
+    # Check if already WAV
+    if audio_file_path.lower().endswith('.wav'):
+        return audio_file_path
+    
+    # Convert using ffmpeg
+    import subprocess
+    wav_path = audio_file_path.rsplit('.', 1)[0] + '_converted.wav'
+    
+    try:
+        subprocess.run([
+            'ffmpeg', '-y', '-i', audio_file_path,
+            '-ar', '16000',  # 16kHz sample rate
+            '-ac', '1',      # Mono
+            wav_path
+        ], check=True, capture_output=True)
+        return wav_path
+    except subprocess.CalledProcessError:
+        # If ffmpeg fails, return original and hope Gemini can handle it
+        return audio_file_path
+    except FileNotFoundError:
+        # ffmpeg not installed, try with original file
+        return audio_file_path
+
+
+def speech_to_text(
+    audio_file_path: str,
+    language: str = "sv",
+    model_id: str = "gemini-2.5-flash",
+) -> dict:
+    """Transcribe audio file to text using Google Gemini.
     
     Args:
         audio_file_path: Path to the audio file to transcribe
-        language: Language code (default: None for auto-detection). e.g., "eng", "swe"
-        model_id: Model ID (default: scribe_v2)
-        diarize: Enable speaker diarization (default: True)
-        tag_events: Tag audio events like laughter, applause (default: True)
+        language: Language code (default: "sv" for Swedish)
+        model_id: Gemini model ID (default: gemini-2.5-flash)
     
     Returns:
         dict with transcription text and metadata
     """
-    api_key = os.getenv("ELEVEN_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError("ELEVEN_API_KEY environment variable is not set. Set it with: export ELEVEN_API_KEY=your_key_here")
+        raise ValueError(
+            "GEMINI_API_KEY environment variable is not set. "
+            "Get your key at: https://aistudio.google.com/apikeys"
+        )
 
     if not os.path.isfile(audio_file_path):
         raise FileNotFoundError(f"Audio file not found: {audio_file_path}")
 
-    client = ElevenLabs(api_key=api_key)
+    # Initialize Gemini client
+    client = genai.Client(api_key=api_key)
 
-    with open(audio_file_path, "rb") as audio_file:
-        audio_data = BytesIO(audio_file.read())
-
-    transcription = client.speech_to_text.convert(
-        file=audio_data,
-        model_id=model_id,
-        tag_audio_events=tag_events,
-        language_code=language,
-        diarize=diarize,
-    )
-
-    return {
-        "text": transcription.text,
-        "language": transcription.language_code if hasattr(transcription, 'language_code') else language,
-        "diarization": diarize,
+    # Read audio file
+    audio_path = Path(audio_file_path)
+    
+    # Determine MIME type based on file extension
+    mime_types = {
+        '.wav': 'audio/wav',
+        '.mp3': 'audio/mpeg',
+        '.ogg': 'audio/ogg',
+        '.oga': 'audio/ogg',
+        '.m4a': 'audio/mp4',
+        '.webm': 'audio/webm',
+        '.flac': 'audio/flac',
     }
+    
+    ext = audio_path.suffix.lower()
+    mime_type = mime_types.get(ext, 'audio/wav')
+    
+    # Upload audio file to Gemini
+    uploaded_file = client.files.upload(file=audio_path)
+    
+    # Create prompt for transcription
+    language_names = {
+        'sv': 'Swedish',
+        'en': 'English',
+        'es': 'Spanish',
+        'de': 'German',
+        'fr': 'French',
+        'zh': 'Chinese',
+        'ja': 'Japanese',
+        'ko': 'Korean',
+    }
+    language_name = language_names.get(language, language)
+
+    prompt = f"""Transcribe the following audio file.
+The audio is in {language_name}.
+Return ONLY the transcribed text, nothing else.
+Do not include any explanations or notes.
+If the audio is unclear or empty, return an empty string."""
+
+    try:
+        response = client.models.generate_content(
+            model=model_id,
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part(text=prompt),
+                        types.Part(
+                            inline_data=types.Blob(
+                                mime_type=mime_type,
+                                data=audio_path.read_bytes(),
+                            )
+                        ) if uploaded_file is None else None,
+                    ]
+                )
+            ],
+            config=types.GenerateContentConfig(
+                temperature=0.1,  # Low temperature for accurate transcription
+            )
+        )
+        
+        # Alternative: Use the uploaded file reference
+        if uploaded_file:
+            response = client.models.generate_content(
+                model=model_id,
+                contents=[
+                    prompt,
+                    uploaded_file,
+                ],
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                )
+            )
+        
+        transcription_text = response.text.strip()
+        
+        return {
+            "text": transcription_text,
+            "language": language,
+            "model": model_id,
+        }
+        
+    except Exception as e:
+        raise RuntimeError(f"Transcription failed: {e}")
+    finally:
+        # Clean up uploaded file
+        try:
+            if uploaded_file:
+                client.files.delete(name=uploaded_file.name)
+        except:
+            pass
 
 
 def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description="Transcribe audio files using ElevenLabs Scribe v2."
+        description="Transcribe audio files using Google Gemini."
     )
     parser.add_argument("--file", required=True, help="Path to the audio file to transcribe")
-    parser.add_argument("--language", default=None, help="Language code (default: None for auto-detect). e.g., eng, swe")
-    parser.add_argument("--model", default="scribe_v2", help="Model ID (default: scribe_v2)")
-    parser.add_argument("--diarize", action=argparse.BooleanOptionalAction, default=True, help="Annotate who is speaking")
-    parser.add_argument("--tag-events", action=argparse.BooleanOptionalAction, default=True, help="Tag audio events like laughter, applause")
+    parser.add_argument("--language", default="sv", help="Language code (default: sv for Swedish)")
+    parser.add_argument("--model", default="gemini-2.5-flash", help="Gemini model ID")
     args = parser.parse_args()
 
     try:
@@ -68,8 +187,6 @@ def main():
             audio_file_path=args.file,
             language=args.language,
             model_id=args.model,
-            diarize=args.diarize,
-            tag_events=args.tag_events,
         )
         print(result["text"])
     except Exception as e:

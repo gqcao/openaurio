@@ -391,8 +391,8 @@ async def send_voice_response(update: Update, text: str):
         result = text_to_speech(
             text_input=text,
             output_file=temp_audio_path,
-            voice_id="JBFqnCBsd6RMkjVDRZzb",  # Vera's voice (Rachel)
-            model_id="eleven_multilingual_v2",
+            voice_name="Leda",  # Vera's voice (soft, gentle)
+            model_id="gemini-2.5-flash-preview-tts",
         )
         
         # Send as voice message
