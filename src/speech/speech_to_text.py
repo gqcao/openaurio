@@ -118,39 +118,17 @@ Do not include any explanations or notes.
 If the audio is unclear or empty, return an empty string."""
 
     try:
+        # Use uploaded file reference (more reliable for larger files)
         response = client.models.generate_content(
             model=model_id,
             contents=[
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part(text=prompt),
-                        types.Part(
-                            inline_data=types.Blob(
-                                mime_type=mime_type,
-                                data=audio_path.read_bytes(),
-                            )
-                        ) if uploaded_file is None else None,
-                    ]
-                )
+                prompt,
+                uploaded_file,
             ],
             config=types.GenerateContentConfig(
                 temperature=0.1,  # Low temperature for accurate transcription
             )
         )
-        
-        # Alternative: Use the uploaded file reference
-        if uploaded_file:
-            response = client.models.generate_content(
-                model=model_id,
-                contents=[
-                    prompt,
-                    uploaded_file,
-                ],
-                config=types.GenerateContentConfig(
-                    temperature=0.1,
-                )
-            )
         
         transcription_text = response.text.strip()
         

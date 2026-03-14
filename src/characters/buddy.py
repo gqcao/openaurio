@@ -502,6 +502,93 @@ class Buddy:
         
         return unlocked
 
+    def _get_tools(self):
+        """Get available tools for Gemini function calling."""
+        from google.genai import types
+        
+        tools = [
+            types.Tool(
+                function_declarations=[
+                    types.FunctionDeclaration(
+                        name="web_search",
+                        description="Search the web for current information. Use this when you need to find recent news, facts, or information that may have changed.",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "query": types.Schema(
+                                    type=types.Type.STRING,
+                                    description="The search query",
+                                ),
+                            },
+                            required=["query"],
+                        ),
+                    ),
+                    types.FunctionDeclaration(
+                        name="get_weather",
+                        description="Get current weather information for a location. Use this when the user asks about weather.",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "location": types.Schema(
+                                    type=types.Type.STRING,
+                                    description="City name (e.g., 'Gothenburg', 'Stockholm', 'London')",
+                                ),
+                            },
+                            required=["location"],
+                        ),
+                    ),
+                    types.FunctionDeclaration(
+                        name="get_forecast",
+                        description="Get weather forecast for the next few days. Use this when the user asks about future weather.",
+                        parameters=types.Schema(
+                            type=types.Type.OBJECT,
+                            properties={
+                                "location": types.Schema(
+                                    type=types.Type.STRING,
+                                    description="City name",
+                                ),
+                                "days": types.Schema(
+                                    type=types.Type.INTEGER,
+                                    description="Number of days (1-3)",
+                                ),
+                            },
+                            required=["location"],
+                        ),
+                    ),
+                ]
+            )
+        ]
+        return tools
+    
+    def _execute_tool(self, name: str, args: dict) -> str:
+        """Execute a tool and return the result."""
+        try:
+            if name == "web_search":
+                from src.web_search.web_search import web_search
+                results = web_search(args["query"], search_depth="basic")
+                if isinstance(results, list):
+                    # Format results
+                    formatted = []
+                    for r in results[:5]:  # Limit to 5 results
+                        formatted.append(f"- {r.get('title', 'N/A')}: {r.get('body', '')[:200]}")
+                    return "\n".join(formatted)
+                return str(results)
+            
+            elif name == "get_weather":
+                from src.weather.weather import get_weather
+                return get_weather(args["location"])
+            
+            elif name == "get_forecast":
+                from src.weather.weather import get_forecast
+                days = args.get("days", 3)
+                return get_forecast(args["location"], days)
+            
+            else:
+                return f"Unknown tool: {name}"
+                
+        except Exception as e:
+            return f"Error executing {name}: {str(e)}"
+
     def chat(self, user_message: str, is_voice: bool = False) -> Dict[str, Any]:
         """
         Chat with the buddy.
@@ -529,20 +616,12 @@ class Buddy:
             except ImportError:
                 pass
         
-        # Build messages for LLM
-        messages = [
-            {"role": "system", "content": self.get_system_prompt()},
-        ]
-        
-        if scenario_prompt:
-            messages.append({"role": "system", "content": f"SCENARIO:\n{scenario_prompt}"})
-        
-        messages.append({"role": "user", "content": user_message})
-
-        # Call LLM using Google Gemini
+        # Call LLM using Google Gemini with tools
         try:
             from google import genai
             from google.genai import types
+            import logging
+            logger = logging.getLogger(__name__)
             
             client = genai.Client(api_key=self.api_key)
             
@@ -554,16 +633,77 @@ class Buddy:
             
             full_prompt += f"\n\nUser message: {user_message}"
             
+            # Get tools
+            tools = self._get_tools()
+            
+            # First call - may return function call
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.8,
                     max_output_tokens=500,
+                    tools=tools,
                 )
             )
             
-            reply = response.text
+            # Debug: log response structure
+            logger.info(f"Response has candidates: {response.candidates is not None}")
+            if response.candidates:
+                logger.info(f"First candidate has content: {response.candidates[0].content is not None}")
+                if response.candidates[0].content:
+                    logger.info(f"Content parts: {len(response.candidates[0].content.parts) if response.candidates[0].content.parts else 0}")
+            
+            # Check if model wants to call a function
+            function_called = False
+            if response.candidates and response.candidates[0].content and response.candidates[0].content.parts:
+                for i, part in enumerate(response.candidates[0].content.parts):
+                    logger.info(f"Part {i}: has function_call = {hasattr(part, 'function_call')}")
+                    if hasattr(part, 'function_call'):
+                        logger.info(f"  function_call value: {part.function_call}")
+                        logger.info(f"  function_call type: {type(part.function_call)}")
+                    if hasattr(part, 'function_call') and part.function_call:
+                        func_name = part.function_call.name
+                        func_args = dict(part.function_call.args) if part.function_call.args else {}
+                        logger.info(f"Function call detected: {func_name}({func_args})")
+                        
+                        # Execute the function
+                        tool_result = self._execute_tool(func_name, func_args)
+                        logger.info(f"Tool result: {tool_result[:200]}...")
+                        
+                        # Call model again with tool result
+                        follow_up = client.models.generate_content(
+                            model="gemini-2.5-flash",
+                            contents=[
+                                types.Content(
+                                    role="user",
+                                    parts=[types.Part(text=full_prompt)]
+                                ),
+                                types.Content(
+                                    role="model",
+                                    parts=[types.Part(function_call=part.function_call)]
+                                ),
+                                types.Content(
+                                    role="user",
+                                    parts=[types.Part(
+                                        function_response=types.FunctionResponse(
+                                            name=func_name,
+                                            response={"result": tool_result}
+                                        )
+                                    )]
+                                ),
+                            ],
+                            config=types.GenerateContentConfig(
+                                temperature=0.8,
+                                max_output_tokens=500,
+                            )
+                        )
+                        reply = follow_up.text
+                        function_called = True
+                        break
+            
+            if not function_called:
+                reply = response.text
             
         except Exception as e:
             reply = f"Åh nej, något gick fel! Försök igen. (Error: {str(e)[:50]})"
