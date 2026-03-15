@@ -111,7 +111,14 @@ openaurio/
 
 ## License
 
-MIT — Open source for the language learning community.
+**Dual License**
+
+- **MIT License** — Free for personal use, education, and non-profit organizations
+- **Commercial License** — Required for businesses and commercial use
+
+See [LICENSE](LICENSE) for details.
+
+For commercial licensing inquiries, contact us at [openaurio.com](https://openaurio.com).
 
 ---
 
