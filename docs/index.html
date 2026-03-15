@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>openaurio — Language buddy with a soul</title>
+    <meta name="description" content="Learn Swedish through emotional connection with AI characters. Duolingo with personality.">
+    <meta property="og:title" content="openaurio — Language buddy with a soul">
+    <meta property="og:description" content="Meet Vera, your Swedish neighbor who actually cares about your progress.">
+    <meta property="og:image" content="https://gqcao.github.io/openaurio/demo_swe.gif">
+    <meta property="og:url" content="https://gqcao.github.io/openaurio">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #fef9f3 0%, #fef3e2 100%);
+            color: #1a1a2e;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+        
+        /* Header */
+        header {
+            padding: 20px 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            text-decoration: none;
+        }
+        
+        .logo span {
+            color: #f59e0b;
+        }
+        
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #666;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .github-link:hover {
+            color: #1a1a2e;
+        }
+        
+        /* Hero */
+        .hero {
+            padding: 80px 0 60px;
+            text-align: center;
+        }
+        
+        .badge {
+            display: inline-block;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -0.02em;
+        }
+        
+        h1 .highlight {
+            background: linear-gradient(135deg, #f59e0b, #ea580c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .tagline {
+            font-size: 1.25rem;
+            color: #666;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 50px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b, #ea580c);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #1a1a2e;
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border: 2px solid #e5e5e5;
+            transition: border-color 0.2s;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #f59e0b;
+        }
+        
+        /* Demo */
+        .demo-section {
+            padding: 40px 0 80px;
+        }
+        
+        .demo-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .demo-gif {
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            max-width: 280px;
+            width: 100%;
+        }
+        
+        .demo-features {
+            text-align: left;
+            max-width: 400px;
+        }
+        
+        .demo-features h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .feature-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        
+        .feature-text strong {
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .feature-text span {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        /* Vera Section */
+        .vera-section {
+            background: white;
+            padding: 80px 0;
+        }
+        
+        .vera-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+        }
+        
+        @media (max-width: 768px) {
+            .vera-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .vera-card {
+            background: linear-gradient(135deg, #fef9f3, #fff7ed);
+            border-radius: 24px;
+            padding: 40px;
+            border: 1px solid #fed7aa;
+        }
+        
+        .vera-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #f59e0b, #ea580c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .vera-card h3 {
+            font-size: 1.75rem;
+            margin-bottom: 8px;
+        }
+        
+        .vera-card .subtitle {
+            color: #92400e;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
+        
+        .vera-card p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .vera-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            padding-top: 20px;
+            border-top: 1px solid #fed7aa;
+        }
+        
+        .vera-stat {
+            text-align: center;
+        }
+        
+        .vera-stat .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        .vera-stat .label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .vera-info h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+        
+        .vera-info p {
+            color: #666;
+            margin-bottom: 16px;
+        }
+        
+        .vera-traits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 20px;
+        }
+        
+        .trait {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        /* Features Grid */
+        .features-section {
+            padding: 80px 0;
+        }
+        
+        .features-section h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 50px;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid #e5e5e5;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+        }
+        
+        .feature-card .icon {
+            font-size: 2rem;
+            margin-bottom: 16px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+        
+        /* Tech Stack */
+        .tech-section {
+            background: #1a1a2e;
+            color: white;
+            padding: 60px 0;
+        }
+        
+        .tech-section h2 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: #a0a0a0;
+        }
+        
+        .tech-logos {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .tech-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ccc;
+            font-weight: 500;
+        }
+        
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e5e5e5;
+        }
+        
+        footer a {
+            color: #f59e0b;
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero {
+                padding: 60px 0 40px;
+            }
+            
+            .demo-container {
+                flex-direction: column;
+            }
+            
+            .demo-features {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">open<span>aurio</span> 🇸🇪</a>
+                <a href="https://github.com/gqcao/openaurio" class="github-link" target="_blank">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    </svg>
+                    Star on GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+    
+    <main>
+        <section class="hero">
+            <div class="container">
+                <span class="badge">🇸🇪 Now in Swedish</span>
+                <h1>Language buddy<br>with a <span class="highlight">soul</span></h1>
+                <p class="tagline">Meet Vera — your Swedish neighbor who actually cares about your progress. Not just another chatbot. A friend.</p>
+                <div class="cta-buttons">
+                    <a href="https://t.me/vera_auriobot" class="btn-primary" target="_blank">
+                        🤖 Try Vera on Telegram
+                    </a>
+                    <a href="https://github.com/gqcao/openaurio" class="btn-secondary" target="_blank">
+                        View Source Code
+                    </a>
+                </div>
+            </div>
+        </section>
+        
+        <section class="demo-section">
+            <div class="container">
+                <div class="demo-container">
+                    <img src="demo_swe.gif" alt="openaurio demo" class="demo-gif">
+                    <div class="demo-features">
+                        <h3>See it in action</h3>
+                        <div class="feature-item">
+                            <span class="feature-icon">💬</span>
+                            <div class="feature-text">
+                                <strong>Natural conversations</strong>
+                                <span>Talk about real topics, not robotic drills</span>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🎤</span>
+                            <div class="feature-text">
+                                <strong>Voice messages</strong>
+                                <span>Practice speaking with instant feedback</span>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🧠</span>
+                            <div class="feature-text">
+                                <strong>Remembers you</strong>
+                                <span>Your name, level, progress, and mood</span>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-icon">🏆</span>
+                            <div class="feature-text">
+                                <strong>Achievements & XP</strong>
+                                <span>Gamification that actually motivates</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="vera-section">
+            <div class="container">
+                <div class="vera-content">
+                    <div class="vera-card">
+                        <div class="vera-avatar">👩‍🦳</div>
+                        <h3>Meet Vera</h3>
+                        <p class="subtitle">Your Swedish neighbor from Majorna, Göteborg</p>
+                        <p>A retired Swedish teacher who loves baking kanelbullar, tending her garden, and helping newcomers learn Swedish. She's patient, warm, and genuinely interested in your progress.</p>
+                        <div class="vera-stats">
+                            <div class="vera-stat">
+                                <div class="value">62</div>
+                                <div class="label">Years old</div>
+                            </div>
+                            <div class="vera-stat">
+                                <div class="value">3</div>
+                                <div class="label">Grandchildren</div>
+                            </div>
+                            <div class="vera-stat">
+                                <div class="value">1</div>
+                                <div class="label">Cat (Misse)</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="vera-info">
+                        <h2>More than a chatbot</h2>
+                        <p>Vera isn't just an AI — she's a character with depth, personality, and emotional intelligence. She detects your mood, celebrates your wins, and encourages you through challenges.</p>
+                        <p>Built for SFI (Swedish for Immigrants) students, Vera helps you practice real conversations you'll actually have in Sweden — ordering fika, shopping for groceries, finding an apartment.</p>
+                        <div class="vera-traits">
+                            <span class="trait">☕ Fika lover</span>
+                            <span class="trait">🌱 Gardener</span>
+                            <span class="trait">📚 Former teacher</span>
+                            <span class="trait">💙 Patient</span>
+                            <span class="trait">😊 Encouraging</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="features-section">
+            <div class="container">
+                <h2>Why openaurio?</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="icon">🎭</div>
+                        <h3>Character-Driven Learning</h3>
+                        <p>Learn through emotional connection with AI characters who have personalities, backstories, and genuine conversations.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🎯</div>
+                        <h3>Scenario-Based Practice</h3>
+                        <p>Real-world situations: fika with friends, grocery shopping, apartment hunting. Practice what you'll actually use.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">😊</div>
+                        <h3>Mood Detection</h3>
+                        <p>Vera senses when you're tired, frustrated, or excited — and adapts her teaching style to match your energy.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">📈</div>
+                        <h3>Progress Tracking</h3>
+                        <p>XP points, levels (A1→B2), daily streaks, and achievements. See your Swedish improve over time.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🧠</div>
+                        <h3>Long-Term Memory</h3>
+                        <p>Vera remembers your name, Swedish level, personal details, and past conversations. Build a real relationship.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🇸🇪</div>
+                        <h3>Built for SFI</h3>
+                        <p>Designed for Swedish for Immigrants students. Aligned with SFI curriculum levels A-D.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="tech-section">
+            <div class="container">
+                <h2>Built with modern AI</h2>
+                <div class="tech-logos">
+                    <div class="tech-item">
+                        <span>🤖</span> Google Gemini
+                    </div>
+                    <div class="tech-item">
+                        <span>💬</span> Telegram Bot
+                    </div>
+                    <div class="tech-item">
+                        <span>🐍</span> Python + FastAPI
+                    </div>
+                    <div class="tech-item">
+                        <span>🔊</span> Speech-to-Text
+                    </div>
+                    <div class="tech-item">
+                        <span>🗣️</span> Text-to-Speech
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>Made with ❤️ in Gothenburg, Sweden</p>
+            <p style="margin-top: 8px;">
+                <a href="https://github.com/gqcao/openaurio">GitHub</a> · 
+                <a href="https://t.me/vera_auriobot">Try Vera</a> · 
+                MIT License
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
