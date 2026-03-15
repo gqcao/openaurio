@@ -10,6 +10,8 @@ openaurio is an AI-powered language learning app focused on **personality-driven
 
 ## Demo
 
+**Website:** [openaurio.com](https://openaurio.com)
+
 Try the Telegram bot: **[@vera_auriobot](https://t.me/vera_auriobot)**
 
 <img src="docs/demo_swe.gif" alt="demo_swe" width="210" height="466">

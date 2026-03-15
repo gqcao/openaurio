@@ -1,84 +1,114 @@
-# openaurio - Language Buddy with a Soul
+# openaurio — Language Buddy with a Soul
 
 ## One-Liner
 
-**openaurio is an AI language learning companion with a soul, helping immigrants learn Swedish through emotional connection and personalized conversations.**
+**openaurio is an AI language learning companion with genuine personality, helping immigrants learn languages through emotional connection and personalized conversations.**
 
 ---
 
-## Background
+## The Problem
 
-In Sweden, tens of thousands of immigrants wait months for SFI (Swedish for Immigrants) courses. During the waiting period, they lack opportunities for language practice. Traditional language learning apps (like Duolingo) are feature-rich but lack emotional connection, resulting in low user retention (<10%).
+In Sweden alone, tens of thousands of immigrants wait months for SFI (Swedish for Immigrants) courses. During this waiting period, they lack language practice opportunities and struggle to integrate into society. Traditional language apps, while feature-rich, lack emotional connection — resulting in low retention rates (<10%).
 
 **Core Pain Points:**
-- 📋 SFI waiting lists span several months
+- 📋 Long SFI course waiting lists
 - 🤖 Traditional AI apps lack "human touch"
-- 💔 Users lack emotional connection and easily give up
+- 💔 Users lack emotional connection, easily give up
 - 🗣️ Speaking practice opportunities are scarce
 
 ---
 
-## Solution: Vera
+## The Solution: Language Buddies with Soul
 
-**Vera is a 62-year-old retired Swedish teacher living in Gothenburg. She doesn't just teach you language—she cares about your life.**
+**openaurio starts with Swedish learning, but our vision extends to English, Spanish, German, French, Japanese, and beyond. Each language features unique characters with authentic cultural backgrounds.**
 
-### Key Features
+**Meet Vera, Lars, Emma, and more — each a fully-realized character with their own life, personality, and teaching style.**
 
-**1. 🎭 Character with Soul**
-- Complete personality: 62-year-old retired teacher with a cat, a garden, and stories
-- Emotional intelligence: Detects user mood and responds with empathy
-- Personal memory: Remembers user's name, progress, and life stories
+### Active Characters (Swedish)
 
-**2. 🗣️ Voice Conversation**
-- Speech-to-Text: User sends voice, Vera transcribes and understands
-- Text-to-Speech: Vera responds with a warm Swedish voice
-- Real speaking practice: Not multiple choice—actual conversation
+| Character | Age | Location | Style | Best For |
+|-----------|-----|----------|-------|----------|
+| 👵 **Vera** | 62 | Majorna, Göteborg | Warm, motherly, patient | Beginners (A1-A2), culture lovers |
+| 🎮 **Lars** | 28 | Södermalm, Stockholm | Casual, gamer, slang | Young adults (18-35), intermediate (A2-B2) |
+| 📚 **Emma** | 22 | Lund | Energetic, structured, peer-to-peer | Students, academics, exam prep |
 
-**3. 📚 Scenario-Based Learning**
-- ☕ **Fika Scenario**: Ordering at a café
-- 🛒 **Grocery Scenario**: Shopping at a supermarket
-- 🏠 **Apartment Scenario**: Asking about apartment rentals
-- Each scenario includes cultural tips and key phrases
+### Coming Soon (Other Languages)
 
-**4. 🎮 Gamification with Heart**
-- XP points and level system (A1→A2→B1→B2)
-- Daily streak tracking
-- 9 achievement badges
-- Progress visualization
-
-**5. 🇸🇪 SFI Curriculum Aligned**
-- Content aligned with official Swedish SFI curriculum
-- Covers A1 to B1 levels
-- Perfect for pre-SFI practice during waiting periods
+| Character | Language | Location | Personality |
+|-----------|----------|----------|-------------|
+| 🎩 **James** | English | Edinburgh, Scotland | Witty, literary, gentleman |
+| 💃 **Carmen** | Spanish | Barcelona, España | Passionate, artistic, expressive |
+| 🔧 **Lukas** | German | München, Deutschland | Structured, precise, professional |
+| 🎨 **Amélie** | French | Paris, France | Creative, romantic, chic |
+| 🌸 **Yuki** | Japanese | Kyoto, Japan | Mindful, traditional, patient |
 
 ---
 
-## Technical Implementation
+## Core Features
+
+### 1. 🎭 Characters with Soul
+- **Full personality profiles**: Age, occupation, family, hobbies, home
+- **Emotional intelligence**: Detects user mood and responds with empathy
+- **Personal memory**: Remembers your name, progress, and life stories
+- **Consistent character**: Each buddy has their own life, stories, and signature phrases
+
+### 2. 🗣️ Voice Conversations
+- **Speech-to-text**: Send voice messages, buddy understands
+- **Text-to-speech**: Buddy responds with warm, natural voice
+- **Real speaking practice**: Not multiple choice — real conversations
+
+### 3. 📚 Scenario-Based Learning
+- ☕ **Fika** — Café ordering and Swedish coffee culture
+- 🛒 **Grocery** — Supermarket shopping
+- 🏠 **Apartment** — Renting and housing in Sweden
+- Each scenario includes cultural tips and key phrases
+
+### 4. 🎮 Gamification with Heart
+- **XP & Levels**: A1 → A2 → B1 → B2 progression
+- **Streak tracking**: Daily practice motivation
+- **9 Achievements**: Unlock badges for milestones
+- **Progress visualization**: See your growth over time
+
+### 5. 🇸🇪 SFI-Aligned Content
+- Curriculum aligned with official Swedish SFI courses
+- Covers A1 to B1 levels
+- Perfect for SFI waiting list preparation
+
+### 6. 🔧 Smart Tools
+- **Weather integration**: "Hur är vädret i Göteborg?"
+- **Web search**: Current events and cultural questions
+- **Context-aware**: Buddy knows when to use tools
+
+---
+
+## Technical Stack
 
 | Component | Technology |
 |-----------|------------|
-| AI Model | Qwen 3.5 Flash (via DashScope) |
-| Speech Synthesis | ElevenLabs Multilingual v2 |
-| Speech Recognition | Qwen ASR |
-| User Interface | Telegram Bot |
+| AI Model | Google Gemini 2.5 Flash |
+| Voice Synthesis | ElevenLabs Multilingual v2 |
+| Voice Recognition | Qwen ASR (DashScope) |
+| Platform | Telegram Bot |
 | Memory System | JSON file storage |
+| Languages | Swedish (active), English/Spanish/German/French/Japanese (planned) |
 
 ---
 
 ## Innovation Points
 
 1. **"Soul" over "Features"** — Not more features, but deeper connection
-2. **Emotional Intelligence** — AI detects user mood and adjusts responses
-3. **Character Consistency** — Vera has her own life, stories, and hobbies
-4. **Voice-First** — Emphasizes speaking practice over multiple choice
-5. **Social Impact** — Helps immigrants integrate into Swedish society
+2. **Emotional Intelligence** — AI detects mood and adjusts responses
+3. **Character Consistency** — Each buddy has their own life, stories, hobbies
+4. **Voice-First** — Emphasis on speaking practice, not multiple choice
+5. **Multi-Language Vision** — Same soulful approach across languages
+6. **Social Impact** — Helping immigrants integrate into society
 
 ---
 
-## Real-World Value
+## Real Value
 
 ### User Value
-- 📈 Improved language learning efficiency
+- 📈 Higher learning efficiency through emotional engagement
 - 💖 Emotional connection increases retention
 - 🗣️ Real speaking practice opportunities
 - 🇸🇪 Better integration into Swedish society
@@ -87,90 +117,83 @@ In Sweden, tens of thousands of immigrants wait months for SFI (Swedish for Immi
 - 🏫 Reduces pressure on SFI schools
 - 🤝 Promotes immigrant social integration
 - 📚 Lowers language learning barriers
-- 🌍 Scalable to other languages
+- 🌍 Scalable to other languages and countries
 
 ---
 
-## Demo Showcase
+## Demo
 
 ### Text Conversation
 ```
 User: Hej Vera!
-Vera: Hej [User]! Hur mår du idag? 😊
+Vera: Hej [name]! Hur mår du idag? 😊
 
 User: Jag är lite trött
 Vera: Åh nej, min kära vän... 💙 Vill du prata om det? 
-       Eller ska vi ta det lugnt idag?
+      Eller ska vi ta det lugnt idag?
 ```
 
 ### Voice Conversation
 ```
-User: [Sends voice] "Jag vill ha en kanelbulle"
+User: [voice message] "Jag vill ha en kanelbulle"
 Vera: 🎤 You said: "Jag vill ha en kanelbulle"
-       [Sends voice] "Åh, bra val! Kanelbullar är min favorit också!"
+       [voice response] "Åh, bra val! Kanelbullar är min favorit också!"
 ```
 
 ### Scenario Learning
 ```
 User: /fika
-Vera: 📖 Beställa fika
-      Välkommen till kaféet! Vad kan jag hjälpa dig med?
+Vera: 📖 Café Ordering Scenario
+      Welcome to the café! How can I help you?
       
 User: Jag skulle vilja ha en kaffe
-Vera: Ett kaffe, jättebra! Vill du ha något att äta också?
+Vera: One coffee, great! Would you like something to eat with it?
 ```
 
 ### Progress Tracking
 ```
 User: /stats
-Vera: 📊 Din Progress, [User]!
+Vera: 📊 Your progress, [name]!
       
-      Nivå: A2
+      Level: A2
       [████████░░] 150 XP
       
-      🔥 Streak: 7 dagar
-      💬 Totalt meddelanden: 45
-      ✅ Avslutade lektioner: 2/3
-      🏆 Achievements: 3 låsta
+      🔥 Streak: 7 days
+      💬 Total messages: 45
+      ✅ Completed lessons: 2/3
+      🏆 Achievements: 3 unlocked
 ```
 
 ---
 
-## Future Roadmap
+## Roadmap
 
 ### Short-term (1-3 months)
-- [ ] Pilot partnership with Gothenburg SFI schools
-- [ ] Add more scenarios (restaurant, hospital, bank)
-- [ ] Improve speech recognition accuracy
+- Pilot with Gothenburg SFI schools
+- Add more scenarios (restaurant, pharmacy, bank)
+- Improve voice recognition accuracy
+- Launch Lars and Emma characters
 
-### Mid-term (3-6 months)
-- [ ] Develop Web interface
-- [ ] Add more characters (Lars, Emma)
-- [ ] Support other languages (English, German)
+### Medium-term (3-6 months)
+- Web interface development
+- Launch English (James), Spanish (Carmen), German (Lukas)
+- Achievement sharing and social features
 
 ### Long-term (6-12 months)
-- [ ] B2B version (corporate Swedish training)
-- [ ] Partnership with Swedish Migration Agency
-- [ ] Expand to other European countries
+- B2B version (corporate language training)
+- Partnership with Swedish Migration Agency
+- Expand to other European countries
+- Launch French (Amélie) and Japanese (Yuki)
 
 ---
 
-## Team Information
+## Team
 
-**Developer:** George Cao
-**Location:** Gothenburg, Sweden
-**GitHub:** https://github.com/gqcao/openaurio
+**Developer:** [Your Name]  
+**Location:** Gothenburg, Sweden  
+**GitHub:** https://github.com/gqcao/openaurio  
 **Demo:** https://t.me/vera_auriobot
 
 ---
 
-## Acknowledgments
-
-Special thanks to:
-- OpenClaw team for the lobster framework
-- Qwen/DashScope for AI model support
-- ElevenLabs for speech synthesis
-
----
-
-*"To learn a language, you need a friend. Vera is here for you. 🇸🇪"*
+*"To learn a language, you need a friend. Your buddy is waiting for you. 🇸🇪"*
