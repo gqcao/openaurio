@@ -30,8 +30,8 @@ Try the Telegram bot: **[@vera_auriobot](https://t.me/vera_auriobot)**
 |-----------|------------|
 | Interface | Telegram Bot |
 | LLM | Google Gemini 2.5 Flash |
-| TTS | ElevenLabs (Swedish voice) |
-| Speech-to-Text | Qwen ASR (DashScope) |
+| TTS | Gemini TTS |
+| Speech-to-Text | Gemini ASR |
 | Web Search | DuckDuckGo (ddgs) |
 | Weather | wttr.in |
 
@@ -49,8 +49,6 @@ uv pip install -r requirements.txt
 cat > .env << EOF
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 GEMINI_API_KEY=your-gemini-api-key
-ELEVEN_API_KEY=your-elevenlabs-api-key
-DASHSCOPE_API_KEY=your-dashscope-api-key
 EOF
 
 # Run the Telegram bot
@@ -80,14 +78,15 @@ openaurio/
 │   ├── characters/
 │   │   └── buddy.py           # Vera character + Gemini integration
 │   ├── tts/
-│   │   └── tts.py             # Text-to-speech (ElevenLabs)
+│   │   └── tts.py             # Text-to-speech (Gemini TTS)
 │   ├── speech/
-│   │   └── speech_to_text.py   # Speech-to-text (Qwen ASR)
+│   │   └── speech_to_text.py   # Speech-to-text (Gemini ASR)
 │   ├── web_search/
 │   │   └── web_search.py       # Web search (DuckDuckGo)
 │   └── weather/
 │       └── weather.py          # Weather (wttr.in)
 ├── docs/
+│   ├── index.html             # Landing page
 │   └── contest/               # Contest submission materials
 ├── .env                       # API keys (not in git)
 └── README.md
