@@ -67,6 +67,7 @@ uv run python src/bots/telegram_bot.py
 | `/fika` | Start fika scenario lesson |
 | `/grocery` | Start grocery shopping lesson |
 | `/apartment` | Start apartment hunting lesson |
+| `/feedback` | Send feedback to developers |
 | `/reset` | Reset conversation |
 | `/help` | Show help |
 
