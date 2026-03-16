@@ -42,6 +42,7 @@ from src.characters import Buddy
 from src.tts.tts import text_to_speech
 from src.speech.speech_to_text import speech_to_text
 from src.scenarios.lessons import list_scenarios, get_scenario
+from src.analytics import FeedbackLogger, ConversationLogger
 
 # Configure logging
 logging.basicConfig(
@@ -55,6 +56,10 @@ user_sessions: Dict[int, Buddy] = {}
 
 # Track scenario completion (to award achievements)
 user_scenarios_in_progress: Dict[int, str] = {}
+
+# Initialize analytics
+feedback_logger = FeedbackLogger()
+conversation_logger = ConversationLogger()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -83,6 +88,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/grocery - Starta matvarulektion 🛒\n"
         "/apartment - Starta lägenhetslektion 🏠\n"
         "/stats - Visa din progress 📊\n"
+        "/feedback - Ge feedback 💬\n"
         "/reset - Återställ samtal\n"
         "/help - Visa hjälp\n\n"
         "Skicka text eller röstmessagen på svenska så svarar jag! 😊"
@@ -219,6 +225,60 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(stats_message, parse_mode="Markdown")
 
 
+async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /feedback command - collect user feedback."""
+    chat_id = update.effective_chat.id
+    user_name = update.effective_chat.first_name or "min vän"
+    
+    # Get feedback text from command arguments
+    feedback_text = " ".join(context.args) if context.args else None
+    
+    if not feedback_text:
+        # No feedback provided, show instructions
+        await update.message.reply_text(
+            "📝 **Feedback**\n\n"
+            "Jag vill gärna höra dina tankar! Skriv:\n\n"
+            "`/feedback Din feedback här`\n\n"
+            "Exempel:\n"
+            "• `/feedback Vera pratar för fort`\n"
+            "• `/feedback Jag vill ha fler lektioner`\n"
+            "• `/feedback Älskar appen! 💖`\n\n"
+            "_All feedback hjälper mig bli bättre!_",
+            parse_mode="Markdown",
+        )
+        return
+    
+    # Get user info
+    if chat_id not in user_sessions:
+        user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
+    
+    buddy = user_sessions[chat_id]
+    memory = buddy.get_memory() or {}
+    
+    # Log feedback
+    success = feedback_logger.log_feedback(
+        user_id=str(chat_id),
+        user_name=user_name,
+        feedback_text=feedback_text,
+        level=memory.get("level", "A1"),
+        xp=memory.get("xp", 0),
+        scenario=user_scenarios_in_progress.get(chat_id),
+    )
+    
+    if success:
+        await update.message.reply_text(
+            "✅ **Tack för din feedback!**\n\n"
+            f"_\"{feedback_text}\"_\n\n"
+            "Jag uppskattar att du tog dig tid att hjälpa mig bli bättre! 💖\n"
+            "Din feedback hjälper mig att förbättra upplevelsen för alla.",
+            parse_mode="Markdown",
+        )
+    else:
+        await update.message.reply_text(
+            "❌ Något gick fel med att spara din feedback. Försök igen senare."
+        )
+
+
 async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /reset command."""
     chat_id = update.effective_chat.id
@@ -240,6 +300,7 @@ async def handle_text_message(
     """Handle regular text messages."""
     chat_id = update.effective_chat.id
     user_text = update.message.text
+    user_name = update.effective_chat.first_name or "min vän"
     
     if not user_text:
         return
@@ -253,6 +314,7 @@ async def handle_text_message(
         user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
     
     buddy = user_sessions[chat_id]
+    memory = buddy.get_memory() or {}
     
     # Check if user is completing a scenario
     if buddy.scenario_mode and user_text.lower() in ["tack", "klar", "tack för mig", "det var allt"]:
@@ -279,6 +341,19 @@ async def handle_text_message(
         # Get Buddy's response
         response = buddy.chat(user_text, is_voice=False)
         buddy_text = response["text"]
+        
+        # Log conversation
+        conversation_logger.log_conversation(
+            user_id=str(chat_id),
+            user_name=user_name,
+            user_message=user_text,
+            vera_response=buddy_text,
+            is_voice=False,
+            scenario=user_scenarios_in_progress.get(chat_id),
+            level=memory.get("level", "A1"),
+            xp=memory.get("xp", 0),
+            achievements_unlocked=response.get("achievements", []),
+        )
         
         # Send text response
         await update.message.reply_text(buddy_text)
@@ -310,12 +385,14 @@ async def handle_voice_message(
 ):
     """Handle voice messages (audio)."""
     chat_id = update.effective_chat.id
+    user_name = update.effective_chat.first_name or "min vän"
     
     # Get or create Buddy session
     if chat_id not in user_sessions:
         user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
     
     buddy = user_sessions[chat_id]
+    memory = buddy.get_memory() or {}
     
     # Download voice message
     voice_file = await update.message.voice.get_file()
@@ -345,6 +422,19 @@ async def handle_voice_message(
         # Get Buddy's response (mark as voice message for XP bonus)
         response = buddy.chat(user_text, is_voice=True)
         buddy_text = response["text"]
+        
+        # Log conversation
+        conversation_logger.log_conversation(
+            user_id=str(chat_id),
+            user_name=user_name,
+            user_message=user_text,
+            vera_response=buddy_text,
+            is_voice=True,
+            scenario=user_scenarios_in_progress.get(chat_id),
+            level=memory.get("level", "A1"),
+            xp=memory.get("xp", 0),
+            achievements_unlocked=response.get("achievements", []),
+        )
         
         # Send transcription (for user to verify)
         await update.message.reply_text(
@@ -457,6 +547,7 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("scenarios", scenarios_command))
     application.add_handler(CommandHandler("stats", stats_command))
+    application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(CommandHandler("reset", reset_command))
     
     # Scenario commands
