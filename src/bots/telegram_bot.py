@@ -67,12 +67,20 @@ conversation_logger = ConversationLogger()
 # ============================================================================
 
 # Rate limit settings
-RATE_LIMIT_MAX_MESSAGES = 30  # Max messages per hour per user. Set to -1 for unlimited.
+RATE_LIMIT_MAX_MESSAGES = 50  # Max messages per hour per user. Set to -1 for unlimited.
 RATE_LIMIT_WINDOW_SECONDS = 3600  # 1 hour window
+RATE_LIMIT_DAILY = 300  # Max messages per day per user. Set to -1 for unlimited.
+MIN_MESSAGE_INTERVAL = 2  # Minimum seconds between messages. Set to 0 to disable.
 
 # Track user message timestamps for rate limiting
 # Format: {chat_id: [timestamp1, timestamp2, ...]}
 user_message_times: Dict[int, List[float]] = {}
+
+# Track daily message counts: {chat_id: {"date": "YYYY-MM-DD", "count": int}}
+user_daily_counts: Dict[int, Dict] = {}
+
+# Track last message time for cooldown: {chat_id: last_timestamp}
+user_last_message: Dict[int, float] = {}
 
 
 def check_rate_limit(chat_id: int) -> tuple[bool, str]:
@@ -82,33 +90,57 @@ def check_rate_limit(chat_id: int) -> tuple[bool, str]:
     Returns:
         (is_allowed, message) - is_allowed is True if user can send message
     """
-    # If rate limiting is disabled
-    if RATE_LIMIT_MAX_MESSAGES < 0:
-        return True, ""
-    
     current_time = time.time()
+    current_date = time.strftime("%Y-%m-%d")
     
-    # Get user's message history
-    if chat_id not in user_message_times:
-        user_message_times[chat_id] = []
+    # === Check minimum message interval (cooldown) ===
+    if MIN_MESSAGE_INTERVAL > 0:
+        if chat_id in user_last_message:
+            time_since_last = current_time - user_last_message[chat_id]
+            if time_since_last < MIN_MESSAGE_INTERVAL:
+                wait_seconds = int(MIN_MESSAGE_INTERVAL - time_since_last)
+                return False, f"⏳ Vänta {wait_seconds} sekunder innan du skickar nästa meddelande."
     
-    # Remove old timestamps outside the window
-    user_message_times[chat_id] = [
-        t for t in user_message_times[chat_id]
-        if current_time - t < RATE_LIMIT_WINDOW_SECONDS
-    ]
-    
-    # Check if user has hit the limit
-    if len(user_message_times[chat_id]) >= RATE_LIMIT_MAX_MESSAGES:
-        # Calculate time until the next hour window resets
-        oldest_in_window = min(user_message_times[chat_id])
-        time_until_reset = RATE_LIMIT_WINDOW_SECONDS - (current_time - oldest_in_window)
-        minutes_left = int(time_until_reset / 60) + 1
+    # === Check hourly rate limit ===
+    if RATE_LIMIT_MAX_MESSAGES > 0:
+        if chat_id not in user_message_times:
+            user_message_times[chat_id] = []
         
-        return False, f"⏳ Du har nått din gräns på {RATE_LIMIT_MAX_MESSAGES} meddelanden i timmen! Vänta {minutes_left} minuter till nästa timme."
+        # Remove old timestamps outside the window
+        user_message_times[chat_id] = [
+            t for t in user_message_times[chat_id]
+            if current_time - t < RATE_LIMIT_WINDOW_SECONDS
+        ]
+        
+        # Check if user has hit the hourly limit
+        if len(user_message_times[chat_id]) >= RATE_LIMIT_MAX_MESSAGES:
+            oldest_in_window = min(user_message_times[chat_id])
+            time_until_reset = RATE_LIMIT_WINDOW_SECONDS - (current_time - oldest_in_window)
+            minutes_left = int(time_until_reset / 60) + 1
+            
+            return False, f"⏳ Du har nått din gräns på {RATE_LIMIT_MAX_MESSAGES} meddelanden i timmen! Vänta {minutes_left} minuter till nästa timme."
     
-    # Record this message
-    user_message_times[chat_id].append(current_time)
+    # === Check daily rate limit ===
+    if RATE_LIMIT_DAILY > 0:
+        if chat_id not in user_daily_counts:
+            user_daily_counts[chat_id] = {"date": current_date, "count": 0}
+        
+        # Reset count if it's a new day
+        if user_daily_counts[chat_id]["date"] != current_date:
+            user_daily_counts[chat_id] = {"date": current_date, "count": 0}
+        
+        # Check if user has hit the daily limit
+        if user_daily_counts[chat_id]["count"] >= RATE_LIMIT_DAILY:
+            return False, f"🛑 Du har nått din dagliga gräns på {RATE_LIMIT_DAILY} meddelanden! Kom tillbaka imorgon."
+        
+        # Increment daily count
+        user_daily_counts[chat_id]["count"] += 1
+    
+    # === Record this message ===
+    if RATE_LIMIT_MAX_MESSAGES > 0:
+        user_message_times[chat_id].append(current_time)
+    
+    user_last_message[chat_id] = current_time
     
     return True, ""
 

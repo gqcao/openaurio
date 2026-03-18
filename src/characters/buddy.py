@@ -700,7 +700,7 @@ class Buddy:
             
             # First call - may return function call
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=full_prompt,
                 config=types.GenerateContentConfig(
                     temperature=0.8,
@@ -735,7 +735,7 @@ class Buddy:
                         
                         # Call model again with tool result
                         follow_up = client.models.generate_content(
-                            model="gemini-2.5-flash",
+                            model="gemini-3.1-flash-lite-preview",
                             contents=[
                                 types.Content(
                                     role="user",

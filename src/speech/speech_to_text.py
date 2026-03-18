@@ -53,7 +53,7 @@ def convert_to_wav(audio_file_path: str) -> str:
 def speech_to_text(
     audio_file_path: str,
     language: str = "sv",
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = "gemini-3.1-flash-lite-preview",
 ) -> dict:
     """Transcribe audio file to text using Google Gemini.
     
@@ -157,7 +157,7 @@ def main():
     )
     parser.add_argument("--file", required=True, help="Path to the audio file to transcribe")
     parser.add_argument("--language", default="sv", help="Language code (default: sv for Swedish)")
-    parser.add_argument("--model", default="gemini-2.5-flash", help="Gemini model ID")
+    parser.add_argument("--model", default="gemini-3.1-flash-lite-preview", help="Gemini model ID")
     args = parser.parse_args()
 
     try:

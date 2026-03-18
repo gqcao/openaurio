@@ -41,7 +41,7 @@ class ScenarioLesson:
 # ============================================================================
 
 FIKA_LESSON = ScenarioLesson(
-    id="fika_001",
+    id="fika",
     title="Ordering Fika",
     title_sv="Beställa fika",
     description="Learn to order coffee and pastries at a Swedish café",
@@ -87,7 +87,7 @@ Håll dina svar korta (1-2 meningar).""",
 # ============================================================================
 
 GROCERY_LESSON = ScenarioLesson(
-    id="grocery_001",
+    id="grocery",
     title="Grocery Shopping",
     title_sv="Handla mat",
     description="Learn to shop for groceries at a Swedish supermarket (ICA, Willys, Coop)",
@@ -133,7 +133,7 @@ Håll dina svar korta (1-2 meningar).""",
 # ============================================================================
 
 APARTMENT_LESSON = ScenarioLesson(
-    id="apartment_001",
+    id="apartment",
     title="Apartment Inquiry",
     title_sv="Fråga om lägenhet",
     description="Learn to inquire about renting an apartment in Sweden",
