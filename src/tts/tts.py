@@ -70,11 +70,10 @@ def text_to_speech(
     # Initialize Gemini client
     client = genai.Client(api_key=api_key)
 
-    # Build the prompt
-    if style_instruction:
-        prompt = f"{style_instruction}: {text_input}"
-    else:
-        prompt = text_input
+    # TTS model expects just the text to speak
+    # Note: Short conversational phrases (<30 chars) may fail as the model
+    # interprets them as text prompts. Use TTS only for longer responses.
+    prompt = text_input
 
     try:
         response = client.models.generate_content(

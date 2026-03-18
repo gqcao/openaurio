@@ -18,7 +18,8 @@ import sys
 import os
 import tempfile
 import logging
-from typing import Dict, Optional
+import time
+from typing import Dict, Optional, List
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -60,6 +61,56 @@ user_scenarios_in_progress: Dict[int, str] = {}
 # Initialize analytics
 feedback_logger = FeedbackLogger()
 conversation_logger = ConversationLogger()
+
+# ============================================================================
+# RATE LIMITING
+# ============================================================================
+
+# Rate limit settings
+RATE_LIMIT_MAX_MESSAGES = 30  # Max messages per hour per user. Set to -1 for unlimited.
+RATE_LIMIT_WINDOW_SECONDS = 3600  # 1 hour window
+
+# Track user message timestamps for rate limiting
+# Format: {chat_id: [timestamp1, timestamp2, ...]}
+user_message_times: Dict[int, List[float]] = {}
+
+
+def check_rate_limit(chat_id: int) -> tuple[bool, str]:
+    """
+    Check if user is within rate limits.
+    
+    Returns:
+        (is_allowed, message) - is_allowed is True if user can send message
+    """
+    # If rate limiting is disabled
+    if RATE_LIMIT_MAX_MESSAGES < 0:
+        return True, ""
+    
+    current_time = time.time()
+    
+    # Get user's message history
+    if chat_id not in user_message_times:
+        user_message_times[chat_id] = []
+    
+    # Remove old timestamps outside the window
+    user_message_times[chat_id] = [
+        t for t in user_message_times[chat_id]
+        if current_time - t < RATE_LIMIT_WINDOW_SECONDS
+    ]
+    
+    # Check if user has hit the limit
+    if len(user_message_times[chat_id]) >= RATE_LIMIT_MAX_MESSAGES:
+        # Calculate time until the next hour window resets
+        oldest_in_window = min(user_message_times[chat_id])
+        time_until_reset = RATE_LIMIT_WINDOW_SECONDS - (current_time - oldest_in_window)
+        minutes_left = int(time_until_reset / 60) + 1
+        
+        return False, f"⏳ Du har nått din gräns på {RATE_LIMIT_MAX_MESSAGES} meddelanden i timmen! Vänta {minutes_left} minuter till nästa timme."
+    
+    # Record this message
+    user_message_times[chat_id].append(current_time)
+    
+    return True, ""
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -123,17 +174,17 @@ async def scenarios_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /scenarios command."""
     scenarios = list_scenarios()
     
-    message = "📚 **Tillgängliga Övningslägen**\n\n"
+    message = "📚 Tillgängliga Övningslägen\n\n"
     for scenario in scenarios:
         message += (
-            f"**/{scenario['id']}** - {scenario['title_sv']}\n"
-            f"_{scenario['description']}_\n"
-            f"Nivå: {scenario['level']}\n\n"
+            f"• /{scenario['id']} — {scenario['title_sv']}\n"
+            f"  {scenario['description']}\n"
+            f"  Nivå: {scenario['level']}\n\n"
         )
     
-    message += "\nSkicka /<scenario> för att starta en lektion!"
+    message += "Skicka /<scenario> för att starta en lektion!"
     
-    await update.message.reply_text(message, parse_mode="Markdown")
+    await update.message.reply_text(message)
 
 
 async def scenario_command(
@@ -309,6 +360,12 @@ async def handle_text_message(
     if user_text.startswith("/"):
         return
     
+    # Check rate limit
+    is_allowed, rate_limit_msg = check_rate_limit(chat_id)
+    if not is_allowed:
+        await update.message.reply_text(rate_limit_msg)
+        return
+    
     # Get or create Buddy session
     if chat_id not in user_sessions:
         user_sessions[chat_id] = Buddy(character_id="vera", user_id=str(chat_id))
@@ -386,6 +443,12 @@ async def handle_voice_message(
     """Handle voice messages (audio)."""
     chat_id = update.effective_chat.id
     user_name = update.effective_chat.first_name or "min vän"
+    
+    # Check rate limit
+    is_allowed, rate_limit_msg = check_rate_limit(chat_id)
+    if not is_allowed:
+        await update.message.reply_text(rate_limit_msg)
+        return
     
     # Get or create Buddy session
     if chat_id not in user_sessions:
@@ -471,6 +534,12 @@ async def handle_voice_message(
 
 async def send_voice_response(update: Update, text: str):
     """Generate TTS audio and send as voice message."""
+    # Skip TTS for very short responses - Gemini TTS model confuses
+    # short conversational phrases (like "Hej!", "Åh!") as text prompts
+    if len(text) < 30:
+        logger.info(f"Skipping TTS for short text: {text[:30]}...")
+        return
+    
     try:
         # Create temp file for TTS output
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_audio:
