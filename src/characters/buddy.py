@@ -139,6 +139,9 @@ class UserMemory:
             "favorite_topics": [],
             "personal_notes": [],
             "achievements": [],
+            "conversation_history": [],  # Recent messages for context
+            "last_mood": None,  # Detected mood
+            "mood_history": [],  # Recent moods for patterns
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
         }
@@ -185,6 +188,62 @@ class UserMemory:
             self.save()
             return True
         return False
+    
+    def add_to_conversation(self, role: str, message: str, max_history: int = 20):
+        """Add a message to conversation history."""
+        history = self.memory.get("conversation_history", [])
+        history.append({
+            "role": role,  # "user" or "vera"
+            "message": message,
+            "timestamp": datetime.now().isoformat(),
+        })
+        # Keep only last N messages
+        if len(history) > max_history:
+            history = history[-max_history:]
+        self.memory["conversation_history"] = history
+        self.save()
+    
+    def get_conversation_history(self, limit: int = 10) -> list:
+        """Get recent conversation history."""
+        history = self.memory.get("conversation_history", [])
+        return history[-limit:] if history else []
+    
+    def add_personal_note(self, note: str):
+        """Add a personal note about the user."""
+        notes = self.memory.get("personal_notes", [])
+        # Avoid duplicates
+        if note not in notes:
+            notes.append(note)
+            self.memory["personal_notes"] = notes
+            self.save()
+    
+    def add_favorite_topic(self, topic: str):
+        """Add a favorite topic for the user."""
+        topics = self.memory.get("favorite_topics", [])
+        if topic not in topics:
+            topics.append(topic)
+            self.memory["favorite_topics"] = topics
+            self.save()
+    
+    def set_mood(self, mood: str):
+        """Set the user's current mood and track history."""
+        self.memory["last_mood"] = mood
+        
+        # Track mood history
+        mood_history = self.memory.get("mood_history", [])
+        mood_history.append({
+            "mood": mood,
+            "timestamp": datetime.now().isoformat(),
+        })
+        # Keep last 10 mood entries
+        if len(mood_history) > 10:
+            mood_history = mood_history[-10:]
+        self.memory["mood_history"] = mood_history
+        self.save()
+    
+    def get_recent_moods(self, limit: int = 5) -> list:
+        """Get recent mood history."""
+        return self.memory.get("mood_history", [])[-limit:]
 
 
 # ============================================================================
@@ -607,6 +666,9 @@ class Buddy:
         else:
             self.memory.add_xp(5)
         
+        # Add user message to conversation history
+        self.memory.add_to_conversation("user", user_message)
+        
         # Get scenario prompt if in scenario mode
         scenario_prompt = ""
         if self.scenario_mode and self.current_scenario:
@@ -705,6 +767,12 @@ class Buddy:
             if not function_called:
                 reply = response.text
             
+            # Add Vera's response to conversation history
+            self.memory.add_to_conversation("vera", reply)
+            
+            # Extract personal info and mood from conversation
+            self._extract_and_update_context(user_message, reply)
+            
         except Exception as e:
             reply = f"Åh nej, något gick fel! Försök igen. (Error: {str(e)[:50]})"
         
@@ -715,6 +783,59 @@ class Buddy:
             "text": reply,
             "achievements": achievements,
         }
+    
+    def _extract_and_update_context(self, user_message: str, vera_reply: str):
+        """Extract personal info, mood, and topics from conversation."""
+        try:
+            from google import genai
+            from google.genai import types
+            
+            client = genai.Client(api_key=self.api_key)
+            
+            # Quick extraction prompt
+            extraction_prompt = """Analyze this conversation and extract information in JSON format.
+Return ONLY a JSON object with these fields (use null if not found):
+- mood: User's emotional state (happy, sad, tired, frustrated, excited, neutral)
+- personal_info: Any personal facts about user (job, family, hobbies, etc.) - as a short string
+- topic: Main topic of conversation (one word or short phrase)
+
+User message: """ + user_message + """
+
+Vera's reply: """ + vera_reply[:200] + """
+
+JSON:"""
+            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=extraction_prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.1,
+                    max_output_tokens=100,
+                )
+            )
+            
+            import json
+            try:
+                # Parse the JSON response
+                result = json.loads(response.text.strip().strip('```json').strip('```'))
+                
+                # Update mood
+                if result.get("mood"):
+                    self.memory.set_mood(result["mood"])
+                
+                # Add personal note
+                if result.get("personal_info"):
+                    self.memory.add_personal_note(result["personal_info"])
+                
+                # Add topic
+                if result.get("topic"):
+                    self.memory.add_favorite_topic(result["topic"])
+                    
+            except (json.JSONDecodeError, KeyError):
+                pass  # Silently ignore extraction failures
+                
+        except Exception:
+            pass  # Silently ignore extraction failures
 
     def get_system_prompt(self, language: str = "Swedish") -> str:
         """
@@ -775,6 +896,46 @@ class Buddy:
             prompt += f"- Namn: {self.user_name}\n"
         prompt += f"- Nivå: {self.user_level}\n"
         prompt += f"- Språk du lär ut: {language}\n"
+        
+        # Add personal notes about the user
+        personal_notes = self.memory.get("personal_notes", [])
+        if personal_notes:
+            prompt += f"\n### Vad du vet om {self.user_name or 'eleven'}:\n"
+            for note in personal_notes[-5:]:  # Last 5 notes
+                prompt += f"- {note}\n"
+        
+        # Add favorite topics
+        favorite_topics = self.memory.get("favorite_topics", [])
+        if favorite_topics:
+            prompt += f"\n### Ämnen eleven gillar:\n"
+            for topic in favorite_topics[-5:]:
+                prompt += f"- {topic}\n"
+        
+        # Add mood context
+        last_mood = self.memory.get("last_mood")
+        if last_mood:
+            prompt += f"\n### Elevens humör just nu:\n"
+            prompt += f"- {last_mood}\n"
+            mood_responses = {
+                "happy": "Eleven verkar glad! Var med och dela glädjen.",
+                "sad": "Eleven verkar ledsen. Var extra stöttande och uppmuntrande.",
+                "tired": "Eleven verkar trött. Föreslå enklare övningar eller kortare samtal.",
+                "frustrated": "Eleven verkar frustrerad. Var tålmodig och förklarande.",
+                "excited": "Eleven verkar exalterad! Matcha energin och gör det roligt.",
+                "neutral": "Eleven verkar neutral. Försök engagera med intressanta frågor.",
+            }
+            if last_mood in mood_responses:
+                prompt += f"- {mood_responses[last_mood]}\n"
+        
+        # Add recent conversation history
+        conversation_history = self.memory.get_conversation_history(limit=6)
+        if conversation_history:
+            prompt += f"\n### Senaste samtalet (för kontext):\n"
+            for msg in conversation_history:
+                role = "Du" if msg["role"] == "vera" else self.user_name or "Eleven"
+                # Truncate long messages
+                text = msg["message"][:150] + "..." if len(msg["message"]) > 150 else msg["message"]
+                prompt += f"- {role}: {text}\n"
 
         # Add instructions
         prompt += f"""
