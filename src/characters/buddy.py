@@ -139,7 +139,7 @@ class UserMemory:
             "favorite_topics": [],
             "personal_notes": [],
             "achievements": [],
-            "conversation_history": [],  # Recent messages for context
+            "conversation_history": [],  # Last 3-5 messages (token efficient)
             "last_mood": None,  # Detected mood
             "mood_history": [],  # Recent moods for patterns
             "created_at": datetime.now().isoformat(),
@@ -189,21 +189,21 @@ class UserMemory:
             return True
         return False
     
-    def add_to_conversation(self, role: str, message: str, max_history: int = 20):
-        """Add a message to conversation history."""
+    def add_to_conversation(self, role: str, message: str, max_history: int = 5):
+        """Add a message to conversation history. Keep only recent messages."""
         history = self.memory.get("conversation_history", [])
         history.append({
             "role": role,  # "user" or "vera"
             "message": message,
             "timestamp": datetime.now().isoformat(),
         })
-        # Keep only last N messages
+        # Keep only last N messages (default 5 for token efficiency)
         if len(history) > max_history:
             history = history[-max_history:]
         self.memory["conversation_history"] = history
         self.save()
     
-    def get_conversation_history(self, limit: int = 10) -> list:
+    def get_conversation_history(self, limit: int = 5) -> list:
         """Get recent conversation history."""
         history = self.memory.get("conversation_history", [])
         return history[-limit:] if history else []
@@ -927,14 +927,14 @@ JSON:"""
             if last_mood in mood_responses:
                 prompt += f"- {mood_responses[last_mood]}\n"
         
-        # Add recent conversation history
-        conversation_history = self.memory.get_conversation_history(limit=6)
+        # Add recent conversation history (last 3-5 messages for context)
+        conversation_history = self.memory.get_conversation_history(limit=4)
         if conversation_history:
             prompt += f"\n### Senaste samtalet (för kontext):\n"
             for msg in conversation_history:
                 role = "Du" if msg["role"] == "vera" else self.user_name or "Eleven"
                 # Truncate long messages
-                text = msg["message"][:150] + "..." if len(msg["message"]) > 150 else msg["message"]
+                text = msg["message"][:100] + "..." if len(msg["message"]) > 100 else msg["message"]
                 prompt += f"- {role}: {text}\n"
 
         # Add instructions
